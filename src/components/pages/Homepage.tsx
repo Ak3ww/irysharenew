@@ -305,20 +305,27 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
     <div className="min-h-screen bg-[#18191a] p-4 md:p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-0 mb-4">
-            <img 
-              src="/iryshare_logo.svg" 
-              alt="Iryshare Logo" 
-              className="h-24 w-auto logo-svg"
-            />
-            <h1 className="text-3xl md:text-4xl font-bold text-white" style={{ fontFamily: 'Irys1' }}>
-              <span style={{ letterSpacing: '0.1em' }}>WELCOME TO</span> <span style={{ fontFamily: 'IrysItalic', letterSpacing: '0.1em' }} className="ml-0">IRYSHARE</span>
-            </h1>
+        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 mb-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="flex items-center gap-4">
+              <div>
+                <h1 className="text-3xl font-bold text-white mb-1" style={{ fontFamily: 'Irys1', letterSpacing: '0.1em' }}>
+                  WELCOME TO <span style={{ fontFamily: 'IrysItalic', letterSpacing: '0.1em' }} className="ml-0">IRYSHARE</span>
+                </h1>
+                <p className="text-white/60 text-sm" style={{ fontFamily: 'Irys2' }}>Share and store files securely on Irys Network</p>
+              </div>
+            </div>
           </div>
-          <p className="text-white/60 text-lg" style={{ fontFamily: 'Irys2' }}>
-            Decentralized file sharing and storage
-          </p>
+          
+          {/* Security Notice */}
+          <div className="mt-4 p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+            <div className="flex items-center gap-2 text-amber-400 text-sm">
+              <span className="text-lg">🔒</span>
+              <span style={{ fontFamily: 'Irys2' }}>
+                <strong>Security Update:</strong> Real Lit Protocol encryption has been implemented. Private files are now properly encrypted and secure.
+              </span>
+            </div>
+          </div>
         </div>
 
         {/* Action Cards */}

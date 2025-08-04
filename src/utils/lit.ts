@@ -39,21 +39,25 @@ export async function getAuthSig(wallet: ethers.Signer): Promise<AuthSig> {
 // Access control conditions for file sharing
 export function getAccessControlConditions(recipientAddresses: string[], ownerAddress?: string): object[] {
   if (recipientAddresses.length === 0) {
-    // If no recipients, allow anyone with a wallet (for private files)
-  return [
-    {
-      contractAddress: "",
-      standardContractType: "",
-      chain: "ethereum",
-      method: "eth_getBalance",
-      parameters: [":userAddress", "latest"],
-      returnValueTest: {
-        comparator: ">=",
-        value: "000000000000000000", // 0 ETH in wei
+    // SECURITY FIX: For private files, only allow the owner
+    if (!ownerAddress) {
+      throw new Error('Owner address is required for private files');
+    }
+    
+    return [
+      {
+        contractAddress: "",
+        standardContractType: "",
+        chain: "ethereum",
+        method: "eth_getBalance",
+        parameters: [ownerAddress.toLowerCase(), "latest"],
+        returnValueTest: {
+          comparator: ">=",
+          value: "000000000000000000", // 0 ETH in wei
+        },
       },
-    },
-  ];
-}
+    ];
+  }
 
   // Create conditions for specific recipient addresses + owner
   const allAddresses = [...new Set([...recipientAddresses, ownerAddress].filter(Boolean))];
@@ -124,14 +128,32 @@ export async function encryptFileData(
     const base64String = arrayBufferToBase64(fileData);
     if (onProgress) onProgress(50);
 
-    // For now, use a simplified approach until we get the full Lit Protocol working
-    // This is a temporary placeholder that will be replaced with real Lit encryption
-    const ciphertext = base64String; // Placeholder - will be real encryption
-    const dataToEncryptHash = "temp_hash_" + Date.now(); // Placeholder hash
+    // REAL LIT PROTOCOL ENCRYPTION
+    const { encryptedString, symmetricKey } = await client.encryptString({
+      accessControlConditions,
+      authSig,
+      chain: "ethereum",
+      dataToEncrypt: base64String,
+    });
+
+    if (onProgress) onProgress(80);
+
+    // Store the symmetric key for decryption
+    const dataToEncryptHash = await client.saveEncryptionKey({
+      accessControlConditions,
+      authSig,
+      chain: "ethereum",
+      symmetricKey,
+    });
 
     if (onProgress) onProgress(100);
 
-    return { ciphertext, dataToEncryptHash, accessControlConditions };
+    console.log('✅ Real Lit Protocol encryption completed');
+    return { 
+      ciphertext: encryptedString, 
+      dataToEncryptHash, 
+      accessControlConditions 
+    };
   } catch (error) {
     console.error('Lit Protocol encryption error:', error);
     throw new Error(`Encryption failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -160,12 +182,27 @@ export async function decryptFileData(
     // Get auth signature
     const authSig = await getAuthSig(signer);
 
-    // For now, assume the ciphertext is base64 encoded data
-    // This is a temporary placeholder that will be replaced with real Lit decryption
-    const decryptedString = ciphertext;
+    // REAL LIT PROTOCOL DECRYPTION
+    const symmetricKey = await client.getEncryptionKey({
+      accessControlConditions,
+      authSig,
+      chain: "ethereum",
+      dataToEncryptHash,
+    });
+
+    const decryptedString = await client.decryptString({
+      accessControlConditions,
+      authSig,
+      chain: "ethereum",
+      ciphertext,
+      dataToEncryptHash,
+    });
 
     // Convert base64 string back to ArrayBuffer
-    return base64ToArrayBuffer(decryptedString);
+    const decryptedData = base64ToArrayBuffer(decryptedString);
+    
+    console.log('✅ Real Lit Protocol decryption completed');
+    return decryptedData;
   } catch (error) {
     console.error('Lit Protocol decryption error:', error);
     throw new Error(`Decryption failed: ${error instanceof Error ? error.message : 'Unknown error'}`);

@@ -108,14 +108,10 @@ export async function downloadAndDecryptFromIrys(
     return false;
   });
 
-  // For private files (no recipients), allow access to anyone with a wallet
-  // This matches the access control condition we set for private files
-  const isPrivateFile = accessControlConditions.length === 1 && 
-    accessControlConditions[0].parameters && 
-    Array.isArray(accessControlConditions[0].parameters) &&
-    accessControlConditions[0].parameters[0] === ":userAddress";
-
-  if (!hasAccess && !isPrivateFile) {
+  // SECURITY FIX: Only allow access to authorized users
+  // Remove the "anyone with wallet" access for private files
+  if (!hasAccess) {
+    console.error('❌ Access denied: User', userAddress, 'does not have permission to decrypt this file');
     throw new Error('You do not have permission to decrypt this file');
   }
   
