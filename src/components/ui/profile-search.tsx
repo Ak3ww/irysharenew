@@ -200,9 +200,9 @@ export function ProfileSearch({ isOpen, onClose, currentAddress }: ProfileSearch
                     <div className="flex items-center gap-2 mb-1">
                       <h4 className="text-white font-medium">@{profile.username}</h4>
                       {profile.profile_public === false ? (
-                        <EyeOff size={14} className="text-amber-400" title="Private Profile" />
+                        <EyeOff size={14} className="text-amber-400" />
                       ) : (
-                        <Eye size={14} className="text-emerald-400" title="Public Profile" />
+                        <Eye size={14} className="text-emerald-400" />
                       )}
                     </div>
                     

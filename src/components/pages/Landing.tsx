@@ -85,7 +85,6 @@ export function Landing({ onLoginSuccess }: LandingProps) {
       }
 
       // Step 2: Request MetaMask signature to prove wallet ownership
-      // @ts-expect-error - window.ethereum is injected by MetaMask
       if (!(window as any).ethereum) {
         setUsernameError('MetaMask is required for registration');
         return;
@@ -93,7 +92,6 @@ export function Landing({ onLoginSuccess }: LandingProps) {
 
       const message = `Iryshare Registration\n\nWallet: ${address}\nUsername: ${username.trim()}\n\nSign this message to register your account.`;
       
-      // @ts-expect-error - window.ethereum is injected by MetaMask
       const signature = await (window as any).ethereum.request({
         method: 'personal_sign',
         params: [message, address]
