@@ -1,0 +1,127 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: 'Irys1';
+  src: url('/fonts/irys.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Irys2';
+  src: url('/fonts/irys2.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'IrysItalic';
+  src: url('/fonts/irysitalic.woff2') format('woff2');
+  font-weight: normal;
+  font-style: italic;
+}
+
+/* Custom Button Styles */
+@layer components {
+  .btn-irys {
+    @apply bg-black border border-[#67FFD4] text-white px-[18px] py-[10px] cursor-pointer 
+    transition-all duration-200 uppercase text-sm inline-block whitespace-nowrap rounded-[6px];
+    font-family: 'Irys1';
+  }
+  .btn-irys:hover {
+    @apply bg-[#67FFD4] text-black;
+  }
+  .btn-irys:disabled {
+    @apply bg-[#333] text-[#777] border-[#444] cursor-not-allowed;
+  }
+  .btn-irys:disabled:hover {
+    @apply bg-[#333] text-[#777] border-[#444];
+  }
+}
+
+/* Logo Styles */
+@layer components {
+  .logo-white {
+    filter: brightness(0) invert(1);
+  }
+  
+  .logo-white-hover {
+    filter: brightness(0) invert(1);
+    transition: filter 0.2s ease;
+  }
+  
+  .logo-white-hover:hover {
+    filter: brightness(0) invert(0.8);
+  }
+
+  /* SVG Logo Styles */
+  .logo-svg {
+    fill: white !important;
+    filter: brightness(0) invert(1) !important;
+  }
+  
+  .logo-svg-hover {
+    fill: white !important;
+    filter: brightness(0) invert(1) !important;
+    transition: all 0.2s ease;
+  }
+  
+  .logo-svg-hover:hover {
+    fill: #67FFD4 !important;
+    filter: none !important;
+  }
+}
+
+/* Favicon Enhancement */
+@layer utilities {
+  /* Custom favicon styles for better visibility */
+  .favicon-large {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    min-height: 32px !important;
+  }
+  
+  /* Ensure SVG favicon scales properly */
+  link[rel="icon"] {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+  }
+}
+
+/* Custom Slider Styles for Image Cropper */
+.slider::-webkit-slider-thumb {
+  appearance: none;
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  background: #67FFD4;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.slider::-moz-range-thumb {
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  background: #67FFD4;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.slider::-webkit-slider-track {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  height: 8px;
+}
+
+.slider::-moz-range-track {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  height: 8px;
+  border: none;
+}

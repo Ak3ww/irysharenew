@@ -107,6 +107,10 @@ export async function encryptFileData(
     const client = await getLitClient();
     if (onProgress) onProgress(10);
 
+    // DEBUG: Check what methods are available
+    console.log('🔍 Lit client methods:', Object.getOwnPropertyNames(client));
+    console.log('🔍 Lit client prototype methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(client)));
+
     // Get wallet from window.ethereum
     if (!window.ethereum) {
       throw new Error('MetaMask not found');
@@ -129,6 +133,7 @@ export async function encryptFileData(
     if (onProgress) onProgress(50);
 
     // REAL LIT PROTOCOL ENCRYPTION
+    // Use the correct Lit Protocol API methods
     const { encryptedString, symmetricKey } = await client.encryptString({
       accessControlConditions,
       authSig,
@@ -190,7 +195,7 @@ export async function decryptFileData(
       dataToEncryptHash,
     });
 
-    const decryptedString = await client.decryptString({
+    const decryptedString = await client.decrypt({
       accessControlConditions,
       authSig,
       chain: "ethereum",
