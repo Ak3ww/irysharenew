@@ -530,9 +530,9 @@ export function FilePreview({ file, address, onClose, onFileViewed, showSharePan
 
   return (
     <div 
-      className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-[9999] p-4 overflow-hidden"
+      className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-[99999] p-4 overflow-hidden"
       onClick={handleBackdropClick}
-      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
+      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999 }}
     >
       <div 
         className="relative w-full h-full flex items-center justify-center"

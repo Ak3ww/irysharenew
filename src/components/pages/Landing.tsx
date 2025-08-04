@@ -118,7 +118,30 @@ export function Landing({ onLoginSuccess }: LandingProps) {
         return;
       }
 
-      // Step 4: Update any existing file_shares for this address
+      // Step 4: Automatically approve user for future uploads
+      try {
+        console.log('🔐 Approving user for future uploads...');
+        const response = await fetch('/api/approve-user', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userAddress: address
+          })
+        });
+
+        if (response.ok) {
+          console.log('✅ User automatically approved for future uploads');
+        } else {
+          console.warn('⚠️ Auto-approval failed, but registration was successful');
+        }
+      } catch (approvalError) {
+        console.warn('⚠️ Auto-approval failed:', approvalError);
+        // Don't fail registration if approval fails
+      }
+
+      // Step 5: Update any existing file_shares for this address
       // This is handled automatically by the database trigger
       console.log('Registration successful with signature verification');
       console.log('Any existing shared files will now be available');
