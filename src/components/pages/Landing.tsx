@@ -239,9 +239,13 @@ export function Landing({ onLoginSuccess }: LandingProps) {
           </div>
         )}
 
-        {/* Registration Form - Compact */}
+        {/* Registration Modal - Full Screen Overlay */}
         {isConnected && showRegister && (
-          <div className={`bg-white/5 backdrop-blur-xl border border-[#67FFD4]/30 rounded-2xl p-6 shadow-2xl transition-all duration-1000 delay-300 ${animateContent ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}>
+          <div 
+            className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-[99999] p-4"
+            style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999 }}
+          >
+            <div className={`bg-white/5 backdrop-blur-xl border border-[#67FFD4]/30 rounded-2xl p-6 shadow-2xl transition-all duration-1000 delay-300 max-w-md w-full ${animateContent ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}>
             <h2 className="text-2xl text-[#67FFD4] mb-6 text-center font-bold" style={{ fontFamily: 'Irys2' }}>
               Create Your Account
             </h2>
@@ -284,6 +288,7 @@ export function Landing({ onLoginSuccess }: LandingProps) {
               <div className="text-xs text-[#67FFD4] mt-2" style={{ fontFamily: 'Irys2' }}>
                 You'll need to sign a message with MetaMask to register
               </div>
+            </div>
             </div>
           </div>
         )}
