@@ -64,14 +64,12 @@ export function ProfileSearch({ isOpen, onClose, currentAddress }: ProfileSearch
       try {
         const query = searchQuery.trim().toLowerCase();
         
-                 // Search by username (partial match)
-         const { data, error } = await supabase
-           .from('usernames')
-           .select('*')
-           .ilike('username', `%${query}%`)
-           .limit(10);
-
-         console.log('🔍 Profile search results:', { data, error });
+        // Search by username (partial match)
+        const { data, error } = await supabase
+          .from('usernames')
+          .select('*')
+          .ilike('username', `%${query}%`)
+          .limit(10);
 
         if (error) {
           console.error('Search error:', error);
@@ -156,7 +154,6 @@ export function ProfileSearch({ isOpen, onClose, currentAddress }: ProfileSearch
           <button
             onClick={onClose}
             className="text-white hover:text-[#67FFD4] transition-colors p-2 rounded-md hover:bg-white/10"
-            title="Close"
           >
             <X size={20} />
           </button>
