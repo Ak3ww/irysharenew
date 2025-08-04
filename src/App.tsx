@@ -14,6 +14,7 @@ import { Sidebar } from './components/layout/Sidebar';
 import { MobileNav } from './components/layout/MobileNav';
 import { BackToTop } from './components/ui/back-to-top';
 import { ProfileWidget } from './components/layout/ProfileWidget';
+import { Toaster } from './components/ui/toaster';
 
 function AppContent() {
   const { address, isConnected } = useAccount();
@@ -70,10 +71,7 @@ function AppContent() {
     }
   };
 
-  // Log when refreshTrigger changes
-  useEffect(() => {
-    console.log('🔄 Refresh trigger changed to:', refreshTrigger);
-  }, [refreshTrigger]);
+
 
   // Check if user has a username when wallet connects
   useEffect(() => {
@@ -114,7 +112,6 @@ function AppContent() {
 
   const handleFileUpload = () => {
     // Trigger refresh of file lists
-    console.log('🔄 Triggering file list refresh...');
     setRefreshTrigger(prev => prev + 1);
   };
 
@@ -305,6 +302,7 @@ function App() {
   return (
     <Router>
       <AppContent />
+      <Toaster />
     </Router>
   );
 }

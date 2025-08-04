@@ -54,13 +54,11 @@ export function MyFiles({ address, isConnected, usernameSaved, refreshTrigger = 
     if (!address || !isConnected || !usernameSaved) return;
     
     setLoading(true);
-    console.log('🔄 Fetching MyFiles for address:', address);
     const normalizedAddress = address.toLowerCase().trim();
     
     const { data, error } = await supabase.rpc('get_user_files', { user_address: normalizedAddress });
       
     if (error) {
-      console.error('❌ Error fetching files:', error);
       setLoading(false);
       return;
     }
@@ -68,7 +66,6 @@ export function MyFiles({ address, isConnected, usernameSaved, refreshTrigger = 
     const ownedFiles = data?.filter((file: FileData) => file.is_owned) || [];
     // Sort by newest first
     ownedFiles.sort((a: FileData, b: FileData) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-    console.log('📁 Found', ownedFiles.length, 'owned files');
     setMyFiles(ownedFiles);
     setLoading(false);
   };
@@ -82,7 +79,6 @@ export function MyFiles({ address, isConnected, usernameSaved, refreshTrigger = 
   useEffect(() => {
     if (!address || !isConnected || !usernameSaved) return;
 
-    console.log('🔔 Setting up real-time subscription for MyFiles');
     setRealTimeStatus('connecting');
     const normalizedAddress = address.toLowerCase().trim();
 
@@ -98,13 +94,11 @@ export function MyFiles({ address, isConnected, usernameSaved, refreshTrigger = 
           filter: `owner_address=eq.${normalizedAddress}`
         },
         (payload) => {
-          console.log('📡 Real-time update received for MyFiles:', payload);
           // Refetch files when there's a change
           fetchFiles();
         }
       )
       .subscribe((status) => {
-        console.log('📡 Files subscription status:', status);
         if (status === 'SUBSCRIBED') {
           setRealTimeStatus('connected');
         } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
@@ -124,17 +118,15 @@ export function MyFiles({ address, isConnected, usernameSaved, refreshTrigger = 
           filter: `recipient_address=eq.${normalizedAddress}`
         },
         (payload) => {
-          console.log('📡 Real-time update received for file shares:', payload);
           // Refetch files when there's a change
           fetchFiles();
         }
       )
       .subscribe((status) => {
-        console.log('📡 Shares subscription status:', status);
+        // Handle subscription status silently
       });
 
     return () => {
-      console.log('🔕 Cleaning up real-time subscriptions for MyFiles');
       setRealTimeStatus('disconnected');
       supabase.removeChannel(filesSubscription);
       supabase.removeChannel(sharesSubscription);
@@ -225,8 +217,6 @@ export function MyFiles({ address, isConnected, usernameSaved, refreshTrigger = 
   // Direct download function
   const handleDirectDownload = async (file: FileData) => {
     try {
-      console.log('📥 Starting direct download for:', file.file_name);
-      
       let fileData: ArrayBuffer;
       const fileName = file.file_name;
       const fileType = file.file_type || 'application/octet-stream';
@@ -257,9 +247,7 @@ export function MyFiles({ address, isConnected, usernameSaved, refreshTrigger = 
       
       // Clean up
       URL.revokeObjectURL(url);
-      console.log('✅ Direct download completed:', fileName);
     } catch (error) {
-      console.error('❌ Direct download error:', error);
       alert(`Download failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };

@@ -7,6 +7,7 @@ import { supabase } from '../../utils/supabase';
 import { uploadFile } from '../../utils/irys';
 import { uploadEncryptedToIrys } from '../../utils/litIrys';
 import { getIrysUploader } from '../../utils/irys';
+import { useToast } from '../../hooks/use-toast';
 
 interface HomepageProps {
   address: string;
@@ -18,6 +19,8 @@ interface HomepageProps {
 }
 
 export function Homepage({ address, isConnected, usernameSaved, onFileUpload, refreshTrigger = 0, onPageChange }: HomepageProps) {
+  const { toast } = useToast();
+  
   // Upload state
   const [selectedAction, setSelectedAction] = useState('');
   const [file, setFile] = useState<File | null>(null);
@@ -233,7 +236,15 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
         onFileUpload();
       }
 
-      // Show success message
+      // Show success toast
+      toast({
+        title: "Upload Successful!",
+        description: selectedAction === 'share' 
+          ? `File "${file.name}" shared with ${shareRecipientsValid.length} recipient(s)`
+          : `File "${file.name}" uploaded successfully`,
+        variant: "success",
+      });
+
       setTimeout(() => {
         setUploading(false);
         setUploadProgress(0);
@@ -241,8 +252,16 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
       }, 2000);
 
     } catch (error) {
-      console.error('Upload error:', error);
-      setUploadError(error instanceof Error ? error.message : 'Upload failed');
+      const errorMessage = error instanceof Error ? error.message : 'Upload failed';
+      setUploadError(errorMessage);
+      
+      // Show error toast
+      toast({
+        title: "Upload Failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+      
       setUploading(false);
       setUploadProgress(0);
       setUploadStage('');

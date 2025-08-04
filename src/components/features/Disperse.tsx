@@ -5,6 +5,7 @@ import { useAccount, useBalance } from 'wagmi';
 import { parseRecipients, calculateTotalAmount, disperseTokens, formatAmount, validateBalance, checkNetwork, getTransactionUrl } from '../../utils/disperse';
 import type { DisperseRecipient } from '../../utils/disperse';
 import { ethers } from 'ethers';
+import { useToast } from '../../hooks/use-toast';
 
 interface DisperseProps {
   isOpen: boolean;
@@ -12,6 +13,7 @@ interface DisperseProps {
 }
 
 export function Disperse({ isOpen, onClose }: DisperseProps) {
+  const { toast } = useToast();
   const { address } = useAccount();
   const { data: balance } = useBalance({
     address: address as `0x${string}`,
@@ -141,20 +143,54 @@ export function Disperse({ isOpen, onClose }: DisperseProps) {
           message: `Successfully dispersed IRYS to ${recipients.length} recipients in one transaction!`,
           txHash: disperseResult.txHash
         });
+        
+        // Show success toast with transaction link
+        toast({
+          title: "Disperse Successful!",
+          description: `Sent IRYS to ${recipients.length} recipients`,
+          variant: "success",
+          action: disperseResult.txHash ? (
+            <a 
+              href={getTransactionUrl(disperseResult.txHash)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-green-600 hover:text-green-500 underline"
+            >
+              View on Explorer
+            </a>
+          ) : undefined,
+        });
+        
         // Reset form
         setRecipientsInput('');
         setRecipients([]);
         setTotalAmount(0n);
       } else {
+        const errorMessage = disperseResult.error || 'Disperse failed';
         setResult({
           success: false,
-          message: disperseResult.error || 'Disperse failed'
+          message: errorMessage
+        });
+        
+        // Show error toast
+        toast({
+          title: "Disperse Failed",
+          description: errorMessage,
+          variant: "destructive",
         });
       }
     } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
       setResult({
         success: false,
-        message: err instanceof Error ? err.message : 'An error occurred'
+        message: errorMessage
+      });
+      
+      // Show error toast
+      toast({
+        title: "Disperse Failed",
+        description: errorMessage,
+        variant: "destructive",
       });
     } finally {
       setSending(false);
