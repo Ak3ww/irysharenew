@@ -153,8 +153,8 @@ export async function updateFileAccessControl(
   
   const currentData = await response.json();
   
-  // Step 2: Create new access control conditions (include owner)
-  const newAccessControlConditions = getAccessControlConditions();
+  // Step 2: Create new access control conditions (include owner and new recipients)
+  const newAccessControlConditions = getAccessControlConditions(newRecipientAddresses, ownerAddress);
   
   // Step 3: Create updated data structure
   const updatedData = {

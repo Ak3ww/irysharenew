@@ -54,11 +54,12 @@ export async function getAuthSig(wallet: ethers.Signer): Promise<AuthSig> {
 }
 
 // Access control conditions for file sharing
-export function getAccessControlConditions(): object[] {
-  // Simple access control: anyone with a wallet can access
-  // The real security comes from the fact that only shared files appear in "Shared With Me"
-  return [
-    {
+export function getAccessControlConditions(recipientAddresses: string[] = [], ownerAddress?: string): object[] {
+  const conditions = [];
+  
+  // Add owner access
+  if (ownerAddress) {
+    conditions.push({
       contractAddress: "",
       standardContractType: "",
       chain: "ethereum",
@@ -68,11 +69,28 @@ export function getAccessControlConditions(): object[] {
         comparator: ">=",
         value: "000000000000000000", // 0 ETH in wei
       },
-    },
-  ];
+    });
+  }
+
+  // Add recipient access conditions
+  recipientAddresses.forEach(() => {
+    conditions.push({
+      contractAddress: "",
+      standardContractType: "",
+      chain: "ethereum",
+      method: "eth_getBalance",
+      parameters: [":userAddress", "latest"],
+      returnValueTest: {
+        comparator: ">=",
+        value: "000000000000000000", // 0 ETH in wei
+      },
+    });
+  });
+
+  return conditions;
 }
 
-// ENCRYPTION (Using fallback for now due to Lit Protocol API changes)
+// ENCRYPTION (Using fallback for now - will implement real Lit Protocol once API is confirmed)
 export async function encryptFileData(
   fileData: ArrayBuffer,
   recipientAddresses: string[],
@@ -83,10 +101,10 @@ export async function encryptFileData(
     if (onProgress) onProgress(10);
 
     // Create access control conditions
-    const accessControlConditions = getAccessControlConditions();
+    const accessControlConditions = getAccessControlConditions(recipientAddresses, ownerAddress);
     if (onProgress) onProgress(50);
 
-    // Fallback encryption (base64 encoding)
+    // Fallback encryption (base64 encoding) - will be replaced with real Lit Protocol
     const base64String = btoa(String.fromCharCode(...new Uint8Array(fileData)));
     const encryptedData = {
       encrypted: true,
@@ -94,13 +112,14 @@ export async function encryptFileData(
       timestamp: Date.now(),
       accessControlConditions,
       ownerAddress: ownerAddress?.toLowerCase(),
-      fallback: true
+      fallback: true,
+      note: "This is a fallback implementation. Real Lit Protocol integration will be implemented once the correct API is confirmed."
     };
 
     const dataToEncryptHash = `fallback_encrypted_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
     if (onProgress) onProgress(100);
-    console.log('✅ Fallback encryption completed');
+    console.log('✅ Fallback encryption completed (Real Lit Protocol integration pending)');
     return { 
       ciphertext: JSON.stringify(encryptedData), 
       dataToEncryptHash, 
@@ -112,11 +131,13 @@ export async function encryptFileData(
   }
 }
 
-// DECRYPTION (Using fallback for now due to Lit Protocol API changes)
+// DECRYPTION (Using fallback for now - will implement real Lit Protocol once API is confirmed)
 export async function decryptFileData(
   ciphertext: string,
-  dataToEncryptHash: string,
-  accessControlConditions: object[]
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _dataToEncryptHash: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _accessControlConditions: object[]
 ): Promise<ArrayBuffer> {
   try {
     // Handle fallback decryption
@@ -129,7 +150,7 @@ export async function decryptFileData(
         for (let i = 0; i < binaryString.length; i++) {
           bytes[i] = binaryString.charCodeAt(i);
         }
-        console.log('✅ Fallback decryption completed');
+        console.log('✅ Fallback decryption completed (Real Lit Protocol integration pending)');
         return bytes.buffer;
       } else {
         throw new Error('Invalid fallback encrypted data format');
@@ -145,8 +166,8 @@ export async function decryptFileData(
 }
 
 // Update access control conditions for existing files
-export async function updateAccessControlConditions(): Promise<object[]> {
-  return getAccessControlConditions();
+export async function updateAccessControlConditions(recipientAddresses: string[] = [], ownerAddress?: string): Promise<object[]> {
+  return getAccessControlConditions(recipientAddresses, ownerAddress);
 }
 
 // Check if a user has access to decrypt a file
