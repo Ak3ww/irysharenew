@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: 'Irys';
+  src: url('/fonts/irys.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Irys2';
+  src: url('/fonts/irys2.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'IrysItalic';
+  src: url('/fonts/irysitalic.woff2') format('woff2');
+  font-weight: normal;
+  font-style: italic;
+}
+
+/* Custom Button Styles */
+@layer components {
+  .btn-irys {
+    @apply bg-black border border-[#67FFD4] text-white px-[18px] py-[10px] cursor-pointer 
+    transition-all duration-200 uppercase text-sm inline-block whitespace-nowrap rounded-[6px];
+    font-family: 'Irys';
+  }
+  .btn-irys:hover {
+    @apply bg-[#67FFD4] text-black;
+  }
+  .btn-irys:disabled {
+    @apply bg-[#333] text-[#777] border-[#444] cursor-not-allowed;
+  }
+  .btn-irys:disabled:hover {
+    @apply bg-[#333] text-[#777] border-[#444];
+  }
+}
