@@ -205,6 +205,29 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
         setUploadStage('Upload complete!');
       }
 
+      // Automatically approve user after successful upload
+      try {
+        setUploadStage('Approving user for future uploads...');
+        const response = await fetch('/api/approve-user', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userAddress: address
+          })
+        });
+
+        if (response.ok) {
+          console.log('✅ User automatically approved for future uploads');
+        } else {
+          console.warn('⚠️ Auto-approval failed, but upload was successful');
+        }
+      } catch (approvalError) {
+        console.warn('⚠️ Auto-approval failed:', approvalError);
+        // Don't fail the upload if approval fails
+      }
+
       // Update storage usage
       const { data: currentStorage } = await supabase
         .from('user_storage')
