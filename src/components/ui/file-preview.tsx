@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Download, Share, UserPlus, Check, AlertCircle, Info } from 'lucide-react';
 import { downloadAndDecryptFromIrys, updateFileAccessControl } from '../../utils/litIrys';
 import { supabase } from '../../utils/supabase';
@@ -528,7 +529,9 @@ export function FilePreview({ file, address, onClose, onFileViewed, showSharePan
 
   if (!file) return null;
 
-  return (
+  if (!file) return null;
+
+  return createPortal(
     <div 
       className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-[99999] p-4 overflow-hidden"
       onClick={handleBackdropClick}
@@ -870,6 +873,7 @@ export function FilePreview({ file, address, onClose, onFileViewed, showSharePan
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 } 
