@@ -172,8 +172,8 @@ export function Landing({ onLoginSuccess }: LandingProps) {
   }
 
   return (
-    <div className="h-screen bg-[#18191a] flex items-center justify-center p-4 overflow-hidden relative">
-      <div className="max-w-2xl w-full mx-auto relative z-10">
+    <div className="min-h-screen bg-[#18191a] p-4 relative">
+      <div className="max-w-4xl w-full mx-auto relative z-10 py-16">
         {/* Logo with Animation - Compact */}
         <div className="text-center mb-8">
           <div className={`flex justify-center mb-4 transition-all duration-1000 ${animateLogo ? 'opacity-100 scale-100' : 'opacity-0 scale-75'}`}>
@@ -306,7 +306,7 @@ export function Landing({ onLoginSuccess }: LandingProps) {
         )}
 
         {/* Pricing Section */}
-        <div className={`mt-16 transition-all duration-1000 delay-800 ${animateContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+        <div className={`mt-24 mb-16 transition-all duration-1000 delay-800 ${animateContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
           <h2 className="text-3xl text-white font-bold text-center mb-12" style={{ fontFamily: 'Irys1', letterSpacing: '0.1em' }}>
             SIMPLE PRICING
           </h2>
