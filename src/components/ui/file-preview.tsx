@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Download, Share, UserPlus, Check, AlertCircle, Info } from 'lucide-react';
 import { downloadAndDecryptFromIrys, updateFileAccessControl } from '../../utils/litIrys';
@@ -44,7 +44,6 @@ export function FilePreview({ file, address, onClose, onFileViewed, showSharePan
   
   // Menu state
   const [showShareMenu, setShowShareMenu] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<FileData | null>(null);
   
   // Share and recipients state
   const [showSharePanel, setShowSharePanel] = useState(false);
@@ -86,6 +85,20 @@ export function FilePreview({ file, address, onClose, onFileViewed, showSharePan
   // Automatic download function
   const handleDownload = async (file: FileData) => {
     try {
+      // CRITICAL SECURITY CHECK: Verify user has permission to download this file
+      if (!file.is_public && !file.is_owned) {
+        console.error('❌ Access denied: User does not have permission to download this private file');
+        alert('Access denied: You do not have permission to download this file');
+        return;
+      }
+      
+      // ADDITIONAL SECURITY: For encrypted files, only owner can download
+      if (file.is_encrypted && !file.is_owned) {
+        console.error('❌ Access denied: Only file owner can download encrypted files');
+        alert('Access denied: Only the file owner can download encrypted files');
+        return;
+      }
+      
       console.log('📥 Starting download for:', file.file_name);
       
       let fileData: ArrayBuffer;
@@ -305,6 +318,14 @@ export function FilePreview({ file, address, onClose, onFileViewed, showSharePan
 
   // Preview file function
   const handlePreview = async (file: FileData) => {
+    // Security check: Verify user has permission to view this file
+    if (!file.is_public && !file.is_owned) {
+      console.error('❌ Access denied: User does not have permission to view this private file');
+      setPreviewError('Access denied: You do not have permission to view this file');
+      setPreviewLoading(false);
+      return;
+    }
+    
     // Mark file as viewed
     if (onFileViewed) {
       onFileViewed(file.id);
@@ -321,6 +342,14 @@ export function FilePreview({ file, address, onClose, onFileViewed, showSharePan
       console.log('🔍 Previewing file:', file.file_name);
       
       if (file.is_encrypted) {
+        // Additional security check for encrypted files
+        if (!file.is_owned) {
+          // For encrypted files, only the owner should be able to decrypt
+          console.error('❌ Access denied: Only file owner can decrypt encrypted files');
+          setPreviewError('Access denied: Only the file owner can view encrypted files');
+          return;
+        }
+        
         // Decrypt and preview encrypted file
         const { file: decryptedFile } = await downloadAndDecryptFromIrys(file.file_url, address);
         
@@ -354,29 +383,44 @@ export function FilePreview({ file, address, onClose, onFileViewed, showSharePan
       } else {
         // Public file - fetch directly
         const response = await fetch(file.file_url);
-        const data = await response.arrayBuffer();
         
-        if (isImage(file)) {
-          const blob = new Blob([data], { type: file.file_type });
+        // CRITICAL FIX: Check if response is valid before processing
+        if (!response.ok) {
+          throw new Error(`Failed to fetch file: ${response.status} ${response.statusText}`);
+        }
+        
+        // CRITICAL FIX: Check content type to prevent JSON parsing errors
+        const contentType = response.headers.get('content-type');
+        console.log('📄 Content-Type:', contentType);
+        
+        // For images, videos, audio - use blob directly
+        if (isImage(file) || isVideo(file) || isAudio(file)) {
+          const blob = await response.blob();
           const url = URL.createObjectURL(blob);
           setPreviewData(url);
         } else if (isPDF(file)) {
-          const blob = new Blob([data], { type: 'application/pdf' });
+          // PDF files
+          const blob = await response.blob();
           const url = URL.createObjectURL(blob);
-          setPreviewData(url);
-        } else if (isVideo(file)) {
-          const blob = new Blob([data], { type: file.file_type });
-          const url = URL.createObjectURL(blob);
-          setPreviewData(url);
-        } else if (isAudio(file)) {
-          console.log('🎵 Creating public audio preview for:', file.file_name, 'Type:', file.file_type);
-          const blob = new Blob([data], { type: file.file_type || 'audio/mpeg' });
-          const url = URL.createObjectURL(blob);
-          console.log('🎵 Public audio blob URL created:', url);
           setPreviewData(url);
         } else {
-          const text = new TextDecoder().decode(data);
-          setPreviewData(text);
+          // Text files - check if it's actually text
+          if (contentType && contentType.startsWith('text/')) {
+            const text = await response.text();
+            setPreviewData(text);
+          } else {
+            // For unknown types, try to read as text but handle errors
+            try {
+              const text = await response.text();
+              setPreviewData(text);
+            } catch (textError) {
+              console.warn('⚠️ Could not read as text, treating as binary:', textError);
+              // Fallback to blob for unknown types
+              const blob = await response.blob();
+              const url = URL.createObjectURL(blob);
+              setPreviewData(url);
+            }
+          }
         }
       }
       
@@ -401,39 +445,11 @@ export function FilePreview({ file, address, onClose, onFileViewed, showSharePan
     setShowSharePanel(false);
     setShowDetails(false);
     setShowShareMenu(false);
-    setSelectedFile(null);
     setNewRecipientInput('');
     setResolvedNewRecipient(null);
     setNewRecipientValid(false);
     setNewRecipientError('');
     onClose();
-  };
-
-  // Menu functions
-  const handleMenuClick = (e: React.MouseEvent, file: FileData) => {
-    e.stopPropagation();
-    setSelectedFile(file);
-    setShowShareMenu(!showShareMenu);
-  };
-
-  const handleMenuAction = (action: string, file: FileData) => {
-    setShowShareMenu(false);
-    setSelectedFile(null);
-    
-    switch (action) {
-      case 'download':
-        handleDownload(file);
-        break;
-      case 'share':
-        if (file.is_encrypted && file.is_owned) {
-          // For encrypted files owned by current user, show share panel
-          setShowSharePanel(true);
-        } else {
-          // For public files or shared files, just download
-          handleDownload(file);
-        }
-        break;
-    }
   };
 
   // Enhanced zoom and drag handlers with cursor zoom
@@ -510,7 +526,7 @@ export function FilePreview({ file, address, onClose, onFileViewed, showSharePan
     const handleClickOutside = () => {
       if (showShareMenu) {
         setShowShareMenu(false);
-        setSelectedFile(null);
+        // setSelectedFile(null); // This line was removed
       }
     };
 

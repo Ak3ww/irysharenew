@@ -113,20 +113,33 @@ export function SharedFiles() {
     console.log('Loading public file...');
     onProgress(25, 'Loading file...');
     let txId = file.file_url;
+    
+    // Improved URL parsing logic to avoid JSON parse errors with binary files
     try {
-      if (typeof txId !== 'string') {
-        txId = JSON.stringify(txId);
-      }
-      if (typeof txId === 'string' && txId.includes('{')) {
-        const parsed = JSON.parse(txId);
-        txId = parsed.url || parsed.id || txId;
+      // If it's already a direct URL, use it as is
+      if (typeof txId === 'string' && (txId.startsWith('http://') || txId.startsWith('https://'))) {
+        console.log('Using direct URL:', txId);
+      } else if (typeof txId === 'string' && txId.includes('{')) {
+        // Only try to parse as JSON if it actually looks like JSON
+        try {
+          const parsed = JSON.parse(txId);
+          txId = parsed.url || parsed.id || txId;
+        } catch (e) {
+          console.log('JSON parsing failed, using original URL:', e);
+        }
+      } else if (typeof txId !== 'string') {
+        // Convert non-string to string if needed
+        txId = String(txId);
       }
     } catch (e) {
-      console.log('JSON parsing failed, using original:', e);
+      console.log('URL processing failed, using original:', e);
     }
+    
+    // Clean up Irys gateway URL if needed
     if (typeof txId === 'string' && txId.startsWith('https://gateway.irys.xyz/')) {
       txId = txId.replace('https://gateway.irys.xyz/', '');
     }
+    
     console.log('Fetching from gateway with txId:', txId);
     const res = await fetch(`https://gateway.irys.xyz/${txId}`);
     if (!res.ok) throw new Error(`Failed to fetch from Irys: ${res.status} ${res.statusText}`);

@@ -8,6 +8,7 @@ import { uploadFile } from '../../utils/irys';
 import { uploadEncryptedToIrys } from '../../utils/litIrys';
 import { getIrysUploader } from '../../utils/irys';
 import { useToast } from '../../hooks/use-toast';
+import { trackFileUpload, trackError, trackPageView } from '../../utils/analytics';
 
 interface HomepageProps {
   address: string;
@@ -55,6 +56,11 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
     document.addEventListener('keydown', handleEsc);
     return () => document.removeEventListener('keydown', handleEsc);
   }, [selectedAction]);
+
+  // Track page view
+  useEffect(() => {
+    trackPageView('homepage');
+  }, []);
 
   const handleFileSelect = (file: File | null) => {
     if (file) {
@@ -238,6 +244,15 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
         onFileUpload();
       }
 
+      // Track successful upload
+      trackFileUpload(
+        file.size,
+        file.type,
+        selectedAction === 'share' || storePrivate,
+        selectedAction as 'share' | 'store',
+        shareRecipientsValid.length
+      );
+
       // Show success toast
       toast({
         title: "Upload Successful!",
@@ -256,6 +271,9 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Upload failed';
       setUploadError(errorMessage);
+      
+      // Track error
+      trackError('upload_failed', errorMessage, selectedAction);
       
       // Show error toast
       toast({

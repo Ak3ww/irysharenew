@@ -90,12 +90,13 @@ export function Profile() {
         // Load files based on profile visibility
         console.log('🔍 Loading files for address:', profile.address.toLowerCase());
         
+        // CRITICAL SECURITY FIX: Only load files that are explicitly public AND profile visible
         const { data: filesResult, error: filesError } = await supabase
           .from('files')
           .select('*')
           .eq('owner_address', profile.address.toLowerCase())
-          .eq('is_public', true)
-          .eq('profile_visible', true)
+          .eq('is_public', true)  // Must be explicitly public
+          .eq('profile_visible', true)  // Must be explicitly profile visible
           .order('created_at', { ascending: false })
           .limit(20);
 
@@ -105,7 +106,29 @@ export function Profile() {
           console.error('Error loading files:', filesError);
           setProfileFiles([]);
         } else {
-          setProfileFiles(filesResult || []);
+          // ADDITIONAL SECURITY FILTER: Double-check each file is actually public
+          const publicFiles = (filesResult || []).filter((file: ProfileFile) => {
+            const isPublic = file.is_public === true;
+            const isProfileVisible = file.profile_visible === true;
+            const isEncrypted = file.is_encrypted === true;
+            
+            // SECURITY: Never show encrypted files in public profiles
+            if (isEncrypted) {
+              console.warn('🚨 Security: Filtered out encrypted file from public profile:', file.file_name);
+              return false;
+            }
+            
+            // SECURITY: Never show private files in public profiles
+            if (!isPublic || !isProfileVisible) {
+              console.warn('🚨 Security: Filtered out private file from public profile:', file.file_name);
+              return false;
+            }
+            
+            return true;
+          });
+          
+          console.log('🔒 Security filtered files:', publicFiles.length, 'of', filesResult?.length);
+          setProfileFiles(publicFiles);
         }
       } catch (error) {
         console.error('Error loading profile:', error);
@@ -152,6 +175,13 @@ export function Profile() {
   };
 
   const handlePreview = (file: ProfileFile) => {
+    // Security check: Verify this is a public file that should be previewable
+    if (!file.is_public || !file.profile_visible) {
+      console.error('❌ Access denied: Cannot preview private file from public profile');
+      alert('Access denied: Cannot preview private files');
+      return;
+    }
+    
     setSelectedFile(file);
   };
 
@@ -175,6 +205,13 @@ export function Profile() {
 
   const handleDirectDownload = async (file: ProfileFile) => {
     try {
+      // Security check: Verify this is a public file that should be downloadable
+      if (!file.is_public || !file.profile_visible) {
+        console.error('❌ Access denied: Cannot download private file from public profile');
+        alert('Access denied: Cannot download private files');
+        return;
+      }
+      
       const response = await fetch(file.file_url);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
@@ -187,6 +224,7 @@ export function Profile() {
       document.body.removeChild(a);
     } catch (error) {
       console.error('Download error:', error);
+      alert('Download failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
   };
 
@@ -222,8 +260,8 @@ export function Profile() {
         .from('files')
         .select('*')
         .eq('owner_address', profileResult.address.toLowerCase())
-        .eq('is_public', true)
-        .eq('profile_visible', true)
+        .eq('is_public', true)  // Must be explicitly public
+        .eq('profile_visible', true)  // Must be explicitly profile visible
         .order('created_at', { ascending: false })
         .limit(20);
 
@@ -231,7 +269,29 @@ export function Profile() {
         console.error('Refresh files error:', filesError);
         setProfileFiles([]);
       } else {
-        setProfileFiles(filesResult || []);
+        // ADDITIONAL SECURITY FILTER: Double-check each file is actually public
+        const publicFiles = (filesResult || []).filter((file: ProfileFile) => {
+          const isPublic = file.is_public === true;
+          const isProfileVisible = file.profile_visible === true;
+          const isEncrypted = file.is_encrypted === true;
+          
+          // SECURITY: Never show encrypted files in public profiles
+          if (isEncrypted) {
+            console.warn('🚨 Security: Filtered out encrypted file from public profile:', file.file_name);
+            return false;
+          }
+          
+          // SECURITY: Never show private files in public profiles
+          if (!isPublic || !isProfileVisible) {
+            console.warn('🚨 Security: Filtered out private file from public profile:', file.file_name);
+            return false;
+          }
+          
+          return true;
+        });
+        
+        console.log('🔒 Security filtered files:', publicFiles.length, 'of', filesResult?.length);
+        setProfileFiles(publicFiles);
       }
     } catch (error) {
       console.error('Refresh error:', error);

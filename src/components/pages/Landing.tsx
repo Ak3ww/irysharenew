@@ -3,6 +3,7 @@ import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useAccount } from 'wagmi';
 import { supabase } from '../../utils/supabase';
 import { ArrowRight, Shield, Zap, Globe } from 'lucide-react';
+import { trackUserRegistration, trackUserLogin, trackPageView } from '../../utils/analytics';
 
 interface LandingProps {
   onLoginSuccess: () => void;
@@ -22,6 +23,9 @@ export function Landing({ onLoginSuccess }: LandingProps) {
   useEffect(() => {
     setAnimateLogo(true);
     setTimeout(() => setAnimateContent(true), 500);
+    
+    // Track page view
+    trackPageView('landing');
   }, []);
 
   // Check if user is already registered when wallet connects
@@ -48,6 +52,10 @@ export function Landing({ onLoginSuccess }: LandingProps) {
       } else if (data) {
         // User exists - login successful
         console.log('User found:', data.username);
+        
+        // Track user login
+        trackUserLogin('metamask', address);
+        
         onLoginSuccess();
       }
     } catch (error) {
@@ -145,6 +153,10 @@ export function Landing({ onLoginSuccess }: LandingProps) {
       // This is handled automatically by the database trigger
       console.log('Registration successful with signature verification');
       console.log('Any existing shared files will now be available');
+      
+      // Track user registration
+      trackUserRegistration('metamask', address);
+      
       onLoginSuccess();
     } catch (error) {
       console.error('Registration error:', error);

@@ -12,6 +12,8 @@ import { Profile } from './components/pages/Profile';
 import { SendTokens } from './components/pages/SendTokens';
 import { Sidebar } from './components/layout/Sidebar';
 import { MobileNav } from './components/layout/MobileNav';
+import { AnalyticsDashboard } from './components/admin/AnalyticsDashboard';
+import { ApiDocs } from './components/pages/ApiDocs';
 import { BackToTop } from './components/ui/back-to-top';
 import { ProfileWidget } from './components/layout/ProfileWidget';
 import { Footer } from './components/layout/Footer';
@@ -46,6 +48,7 @@ function AppContent() {
     if (path === '/shared') return 'shared';
     if (path === '/sendtokens') return 'sendtokens';
     if (path === '/profile') return 'profile';
+    if (path === '/api-docs') return 'api-docs';
     if (path.startsWith('/profile/')) return 'profile';
     return 'home';
   };
@@ -68,6 +71,9 @@ function AppContent() {
         break;
       case 'profile':
         navigate('/profile');
+        break;
+      case 'api-docs':
+        navigate('/api-docs');
         break;
     }
   };
@@ -279,6 +285,16 @@ function AppContent() {
             } />
             
             <Route path="/profile/:username" element={<div className="p-6"><Profile /></div>} />
+            
+            {/* Admin Analytics Dashboard */}
+            <Route path="/admin/analytics" element={
+              <AnalyticsDashboard refreshTrigger={refreshTrigger} />
+            } />
+            
+            {/* API Documentation */}
+            <Route path="/api-docs" element={
+              <ApiDocs />
+            } />
           </Routes>
         </div>
         
