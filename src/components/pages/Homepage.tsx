@@ -171,11 +171,27 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
         setUploadStage('Upload complete!');
       } else {
         // Store files (public or private)
-        setUploadStage('Uploading to Irys...');
-        
-        // Get Irys uploader
-        const irysUploader = await getIrysUploader();
-        uploadUrl = await uploadFile(irysUploader, file);
+        if (storePrivate) {
+          // Private files should be encrypted
+          setUploadStage('Encrypting and uploading to Irys...');
+          
+          // Convert file to ArrayBuffer
+          const arrayBuffer = await file.arrayBuffer();
+          uploadUrl = await uploadEncryptedToIrys(
+            arrayBuffer,
+            file.name,
+            file.type,
+            address,
+            [] // No recipients for private files
+          );
+        } else {
+          // Public files use regular upload
+          setUploadStage('Uploading to Irys...');
+          
+          // Get Irys uploader
+          const irysUploader = await getIrysUploader();
+          uploadUrl = await uploadFile(irysUploader, file);
+        }
         setUploadProgress(50);
         
         setUploadStage('Saving to database...');
@@ -187,7 +203,9 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
             file_type: file.type,
             file_url: uploadUrl,
             owner_address: address.toLowerCase().trim(),
-            is_encrypted: storePrivate
+            is_encrypted: storePrivate, // Set based on whether file was encrypted
+            is_public: !storePrivate, // Public if not private
+            profile_visible: !storePrivate // Only visible in profile if public
           })
           .select()
           .single();
