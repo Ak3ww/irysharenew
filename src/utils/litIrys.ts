@@ -100,20 +100,9 @@ export async function downloadAndDecryptFromIrys(
   
   if (onProgress) onProgress(50);
   
-  // Step 3: Check if user has access
-  const hasAccess = accessControlConditions.some((condition: Record<string, unknown>) => {
-    if (condition.parameters && Array.isArray(condition.parameters) && condition.parameters[0]) {
-      return (condition.parameters[0] as string).toLowerCase() === userAddress.toLowerCase();
-    }
-    return false;
-  });
-
-  // SECURITY FIX: Only allow access to authorized users
-  // Remove the "anyone with wallet" access for private files
-  if (!hasAccess) {
-    console.error('❌ Access denied: User', userAddress, 'does not have permission to decrypt this file');
-    throw new Error('You do not have permission to decrypt this file');
-  }
+  // Step 3: Let Lit Protocol handle access validation during decryption
+  // We don't need to pre-validate here since Lit Protocol will check access control conditions
+  console.log('🔐 Proceeding to Lit Protocol decryption - access will be validated by Lit nodes');
   
   if (onProgress) onProgress(75);
   
@@ -121,8 +110,7 @@ export async function downloadAndDecryptFromIrys(
   const decryptedData = await decryptFileData(
     ciphertext,
     dataToEncryptHash,
-    accessControlConditions,
-    userAddress
+    accessControlConditions
   );
   
   if (onProgress) onProgress(90);
@@ -166,7 +154,7 @@ export async function updateFileAccessControl(
   const currentData = await response.json();
   
   // Step 2: Create new access control conditions (include owner)
-  const newAccessControlConditions = getAccessControlConditions(newRecipientAddresses, ownerAddress);
+  const newAccessControlConditions = getAccessControlConditions();
   
   // Step 3: Create updated data structure
   const updatedData = {
