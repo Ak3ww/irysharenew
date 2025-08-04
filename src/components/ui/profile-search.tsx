@@ -25,7 +25,7 @@ export function ProfileSearch({ isOpen, onClose, currentAddress }: ProfileSearch
   const [searchResults, setSearchResults] = useState<ProfileData[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
-  const searchTimeoutRef = useRef<NodeJS.Timeout>();
+  const searchTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const navigate = useNavigate();
 
   // Load recent searches from localStorage
