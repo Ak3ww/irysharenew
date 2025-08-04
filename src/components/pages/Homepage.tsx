@@ -409,7 +409,7 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
                 loading={uploading}
                 placeholder="Choose a file to upload..."
                 variant="upload"
-                maxSize={100 * 1024 * 1024} // 100MB limit
+                maxSize={25 * 1024 * 1024} // 25MB limit
               />
             </div>
 

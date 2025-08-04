@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { User, X, Coins, LogOut } from 'lucide-react';
+import { X } from 'lucide-react';
 import { supabase } from '../../utils/supabase';
 import { useBalance, useAccount, useDisconnect } from 'wagmi';
 
@@ -21,6 +21,14 @@ interface UserStats {
 export function ProfileWidget({ address, isConnected, usernameSaved, isMobile = false }: ProfileWidgetProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [stats, setStats] = useState<UserStats | null>(null);
+  // Copy to clipboard function
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
 
   // Wagmi hooks for Irys network
   const { address: wagmiAddress } = useAccount();
@@ -129,15 +137,30 @@ export function ProfileWidget({ address, isConnected, usernameSaved, isMobile = 
             {/* Username */}
             <div className="flex items-center justify-between">
               <span className="text-white/60 text-sm">Username</span>
-              <span className="text-white font-medium">{stats.username}</span>
+              <button
+                onClick={() => copyToClipboard(`@${stats.username}`)}
+                className="text-white font-medium hover:text-[#67FFD4] transition-colors cursor-pointer"
+                title="Click to copy username"
+              >
+                @{stats.username}
+              </button>
+            </div>
+            
+            {/* Wallet Address */}
+            <div className="flex items-center justify-between">
+              <span className="text-white/60 text-sm">Wallet</span>
+              <button
+                onClick={() => copyToClipboard(address)}
+                className="text-white font-medium hover:text-[#67FFD4] transition-colors cursor-pointer font-mono text-sm"
+                title="Click to copy wallet address"
+              >
+                {address.slice(0, 6)}...{address.slice(-4)}
+              </button>
             </div>
             
             {/* Irys Balance */}
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Coins size={14} className="text-[#67FFD4]" />
-                <span className="text-white/60 text-sm">Irys Balance</span>
-              </div>
+              <span className="text-white/60 text-sm">Irys Balance</span>
               <div className="text-right">
                 <div className="text-white font-medium">
                   {balanceLoading ? (
@@ -158,11 +181,11 @@ export function ProfileWidget({ address, isConnected, usernameSaved, isMobile = 
               <span className="text-white font-medium">{stats.totalFiles}</span>
             </div>
             
-            {/* Storage Usage */}
+            {/* Free Upload Credit */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-white/60 text-sm">Storage Used</span>
-                <span className="text-white font-medium">{formatBytes(stats.usedStorage)}</span>
+                <span className="text-white/60 text-sm">Free Upload Credit</span>
+                <span className="text-white font-medium">{formatBytes(stats.totalStorage - stats.usedStorage)}</span>
               </div>
               <div className="w-full bg-white/10 rounded-full h-2">
                 <div 
@@ -184,7 +207,6 @@ export function ProfileWidget({ address, isConnected, usernameSaved, isMobile = 
                 }}
                 className="w-full flex items-center justify-center gap-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 px-4 py-2 rounded-lg transition-all duration-200"
               >
-                <LogOut size={16} />
                 <span className="text-sm font-medium">Disconnect Wallet</span>
               </button>
             </div>
@@ -204,9 +226,9 @@ export function ProfileWidget({ address, isConnected, usernameSaved, isMobile = 
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <User size={24} className="text-white/60" />
-          </div>
+                      <div className="w-full h-full flex items-center justify-center">
+              <div className="text-white/60 text-2xl">👤</div>
+            </div>
         )}
       </button>
         </div>

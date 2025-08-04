@@ -14,6 +14,7 @@ import { Sidebar } from './components/layout/Sidebar';
 import { MobileNav } from './components/layout/MobileNav';
 import { BackToTop } from './components/ui/back-to-top';
 import { ProfileWidget } from './components/layout/ProfileWidget';
+import { Footer } from './components/layout/Footer';
 import { Toaster } from './components/ui/toaster';
 
 function AppContent() {
@@ -280,6 +281,9 @@ function AppContent() {
             <Route path="/profile/:username" element={<div className="p-6"><Profile /></div>} />
           </Routes>
         </div>
+        
+        {/* Footer */}
+        <Footer />
       </div>
       
       {/* Back to Top Button */}

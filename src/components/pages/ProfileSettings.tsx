@@ -10,6 +10,7 @@ interface ProfileSettingsProps {
   address: string;
   isConnected: boolean;
   usernameSaved: boolean;
+  onBack?: () => void;
 }
 
 // Full image cropper component using react-easy-crop
@@ -283,7 +284,7 @@ function ImageCropper({
   );
 }
 
-export function ProfileSettings({ address, isConnected, usernameSaved }: ProfileSettingsProps) {
+export function ProfileSettings({ address, isConnected, usernameSaved, onBack }: ProfileSettingsProps) {
   const [username, setUsername] = useState('');
   const [currentUsername, setCurrentUsername] = useState('');
   const [profileVisible, setProfileVisible] = useState(true);
@@ -298,6 +299,18 @@ export function ProfileSettings({ address, isConnected, usernameSaved }: Profile
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [usernameLoading, setUsernameLoading] = useState(false);
+
+  // ESC key handler for back navigation
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && onBack) {
+        onBack();
+      }
+    };
+
+    document.addEventListener('keydown', handleEsc);
+    return () => document.removeEventListener('keydown', handleEsc);
+  }, [onBack]);
 
   // Fetch current profile data
   useEffect(() => {
@@ -542,7 +555,19 @@ export function ProfileSettings({ address, isConnected, usernameSaved }: Profile
     <div className="bg-[#18191a] p-6">
       <div className="max-w-4xl mx-auto">
         <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8">
-          <h3 className="text-2xl text-white font-semibold mb-8 text-center" style={{ fontFamily: 'Irys1', letterSpacing: '0.1em' }}>PROFILE SETTINGS</h3>
+          <div className="flex items-center justify-between mb-8">
+            {onBack && (
+              <button
+                onClick={onBack}
+                className="text-white/60 hover:text-white transition-colors p-2 rounded-lg hover:bg-white/10"
+                title="Go back (ESC)"
+              >
+                <X size={24} />
+              </button>
+            )}
+            <h3 className="text-2xl text-white font-semibold flex-1 text-center" style={{ fontFamily: 'Irys1', letterSpacing: '0.1em' }}>PROFILE SETTINGS</h3>
+            {onBack && <div className="w-10"></div>} {/* Spacer for centering */}
+          </div>
 
           {usernameLoading ? (
             <div className="text-center py-12">

@@ -304,6 +304,120 @@ export function Landing({ onLoginSuccess }: LandingProps) {
             </div>
           </div>
         )}
+
+        {/* Pricing Section */}
+        <div className={`mt-16 transition-all duration-1000 delay-800 ${animateContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+          <h2 className="text-3xl text-white font-bold text-center mb-12" style={{ fontFamily: 'Irys1', letterSpacing: '0.1em' }}>
+            SIMPLE PRICING
+          </h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            {/* Free Tier */}
+            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8 hover:bg-white/10 transition-all duration-300 group">
+              <div className="text-center">
+                <div className="text-4xl mb-4">🎁</div>
+                <h3 className="text-2xl text-white font-bold mb-4" style={{ fontFamily: 'Irys2' }}>FREE TIER</h3>
+                <div className="text-4xl text-[#67FFD4] font-bold mb-6">$0</div>
+                <ul className="space-y-4 text-white/80 text-sm mb-8">
+                  <li className="flex items-center gap-2">
+                    <span className="text-[#67FFD4]">✓</span>
+                    <span>12GB Free Upload Credit</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="text-[#67FFD4]">✓</span>
+                    <span>Files &gt;100KB: Unlimited Free</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="text-[#67FFD4]">✓</span>
+                    <span>25MB Max File Size</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="text-[#67FFD4]">✓</span>
+                    <span>End-to-End Encryption</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="text-[#67FFD4]">✓</span>
+                    <span>Token Distribution</span>
+                  </li>
+                </ul>
+                <div className="text-[#67FFD4] text-sm font-medium">
+                  Perfect for everyone
+                </div>
+              </div>
+            </div>
+
+            {/* Premium Tier */}
+            <div className="bg-gradient-to-br from-[#67FFD4]/10 to-[#8AFFE4]/10 backdrop-blur-xl border border-[#67FFD4]/30 rounded-2xl p-8 hover:bg-[#67FFD4]/20 transition-all duration-300 group relative">
+              <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-[#67FFD4] text-black px-4 py-1 rounded-full text-sm font-bold">
+                MOST POPULAR
+              </div>
+              <div className="text-center">
+                <div className="text-4xl mb-4">⭐</div>
+                <h3 className="text-2xl text-white font-bold mb-4" style={{ fontFamily: 'Irys2' }}>PREMIUM</h3>
+                <div className="text-4xl text-[#67FFD4] font-bold mb-6">Coming Soon</div>
+                <ul className="space-y-4 text-white/80 text-sm mb-8">
+                  <li className="flex items-center gap-2">
+                    <span className="text-[#67FFD4]">✓</span>
+                    <span>Unlimited Upload Credit</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="text-[#67FFD4]">✓</span>
+                    <span>Larger File Sizes</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="text-[#67FFD4]">✓</span>
+                    <span>Priority Support</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="text-[#67FFD4]">✓</span>
+                    <span>Advanced Analytics</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="text-[#67FFD4]">✓</span>
+                    <span>Custom Branding</span>
+                  </li>
+                </ul>
+                <div className="text-[#67FFD4] text-sm font-medium">
+                  For power users
+                </div>
+              </div>
+            </div>
+
+            {/* Enterprise Tier */}
+            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8 hover:bg-white/10 transition-all duration-300 group">
+              <div className="text-center">
+                <div className="text-4xl mb-4">🏢</div>
+                <h3 className="text-2xl text-white font-bold mb-4" style={{ fontFamily: 'Irys2' }}>ENTERPRISE</h3>
+                <div className="text-4xl text-[#67FFD4] font-bold mb-6">Custom</div>
+                <ul className="space-y-4 text-white/80 text-sm mb-8">
+                  <li className="flex items-center gap-2">
+                    <span className="text-[#67FFD4]">✓</span>
+                    <span>Custom Solutions</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="text-[#67FFD4]">✓</span>
+                    <span>Dedicated Support</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="text-[#67FFD4]">✓</span>
+                    <span>White-label Options</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="text-[#67FFD4]">✓</span>
+                    <span>API Access</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="text-[#67FFD4]">✓</span>
+                    <span>SLA Guarantees</span>
+                  </li>
+                </ul>
+                <div className="text-[#67FFD4] text-sm font-medium">
+                  For organizations
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
