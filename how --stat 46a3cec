@@ -1,0 +1,13 @@
+[33mcommit 46a3cec56c419fcfba72d83ed058ca1d1b303931[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m
+Author: ROLF <56491006+Ak3ww@users.noreply.github.com>
+Date:   Mon Aug 4 08:48:37 2025 +0700
+
+    Add unified toast notifications and clean up console logs
+
+src/App.tsx
+src/components/features/Disperse.tsx
+src/components/pages/Homepage.tsx
+src/components/pages/MyFiles.tsx
+src/components/ui/toast.tsx
+src/components/ui/toaster.tsx
+src/hooks/use-toast.ts

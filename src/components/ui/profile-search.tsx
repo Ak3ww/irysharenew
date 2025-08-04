@@ -141,8 +141,9 @@ export function ProfileSearch({ isOpen, onClose, currentAddress }: ProfileSearch
 
   return (
     <div 
-      className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-[9999] p-4"
       onClick={handleBackdropClick}
+      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
     >
       <div 
         className="bg-black/80 backdrop-blur-xl border border-white/10 rounded-2xl p-6 w-full max-w-2xl"

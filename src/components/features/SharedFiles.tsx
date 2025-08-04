@@ -359,7 +359,10 @@ export function SharedFiles() {
 
       {/* File Preview Modal - Full Screen Transparent */}
       {selectedFile && (
-        <div className="fixed inset-0 bg-transparent backdrop-blur-md flex items-center justify-center z-50">
+        <div 
+          className="fixed inset-0 bg-transparent backdrop-blur-md flex items-center justify-center z-[9999]"
+          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
+        >
           <div className="w-full h-full flex flex-col">
             {/* Header */}
             <div className="flex justify-between items-center p-6 bg-[#1A1A1A]/80 backdrop-blur-sm">

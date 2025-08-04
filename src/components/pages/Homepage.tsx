@@ -364,8 +364,9 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
       {/* Upload Modal */}
       {selectedAction && (
         <div 
-          className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[10000] flex items-center justify-center p-4"
+          className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
           onClick={handleBackdropClick}
+          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
         >
           <div 
             className="bg-black/80 backdrop-blur-xl border border-white/10 rounded-2xl p-4 md:p-6 max-w-md w-full max-h-[90vh] overflow-y-auto"
