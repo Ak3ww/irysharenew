@@ -48,7 +48,7 @@ function AppContent() {
     if (path === '/shared') return 'shared';
     if (path === '/sendtokens') return 'sendtokens';
     if (path === '/profile') return 'profile';
-    if (path === '/api-docs') return 'api-docs';
+
     if (path.startsWith('/profile/')) return 'profile';
     return 'home';
   };
@@ -72,9 +72,7 @@ function AppContent() {
       case 'profile':
         navigate('/profile');
         break;
-      case 'api-docs':
-        navigate('/api-docs');
-        break;
+
     }
   };
 

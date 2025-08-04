@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ChevronRight, Home, Folder, Users, Settings, Search, Send, Globe } from 'lucide-react';
+import { ChevronRight, Home, Folder, Users, Settings, Search, Send } from 'lucide-react';
 import { DisconnectButton } from '../ui/disconnect-button';
 import { supabase } from '../../utils/supabase';
 import { ProfileSearch } from '../ui/profile-search';
@@ -253,12 +253,7 @@ export function Sidebar({ activePage, onPageChange, address, isCollapsed = false
           onClick={() => onPageChange('profile')}
         />
         
-        <SidebarItem
-          icon={<Globe size={20} />}
-          label="API DOCS"
-          isActive={activePage === 'api-docs'}
-          onClick={() => onPageChange('api-docs')}
-        />
+
       </div>
 
 
