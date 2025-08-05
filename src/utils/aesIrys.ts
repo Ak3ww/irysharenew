@@ -172,132 +172,30 @@ export async function updateFileAccessControl(
     console.log('🔐 Encrypted keys count:', Object.keys(encryptedFile.encryptedKeys).length);
     console.log('🔑 Available addresses:', Object.keys(encryptedFile.encryptedKeys));
 
-    // First, decrypt the original file data using the owner's signature
-    const originalMessage = `Encrypt file for sharing`;
-    const originalSignature = await getWalletSignature(originalMessage);
-    console.log('✍️ Original signature obtained');
-    
-    // Create the same key derivation approach used in encryption
-    const addressKey = `${originalSignature}:${ownerAddress.toLowerCase()}`;
-    const keyBytes = new TextEncoder().encode(addressKey);
-    const keyHash = await window.crypto.subtle.digest("SHA-256", keyBytes);
-    const derivedKey = await window.crypto.subtle.importKey(
-      "raw",
-      keyHash,
-      { name: "AES-GCM" },
-      false,
-      ["decrypt"]
-    );
-    console.log('🔑 Derived key created for owner');
-    
-    // Get the original AES key
-    const originalEncryptedKey = encryptedFile.encryptedKeys[ownerAddress.toLowerCase()];
-    if (!originalEncryptedKey) {
-      console.error('❌ Owner address not found in encrypted keys:', ownerAddress.toLowerCase());
-      console.error('❌ Available addresses:', Object.keys(encryptedFile.encryptedKeys));
-      throw new Error('Cannot find original AES key for owner');
+    // Get the shared encrypted key (same for everyone)
+    const existingAddresses = Object.keys(encryptedFile.encryptedKeys);
+    if (existingAddresses.length === 0) {
+      throw new Error('No existing encrypted keys found');
     }
-    console.log('🔑 Found original encrypted key for owner');
+    
+    // Get the shared encrypted key from any existing address
+    const sharedEncryptedKey = encryptedFile.encryptedKeys[existingAddresses[0]];
+    console.log('🔑 Found shared encrypted key');
 
-    const originalKeyBytes = base64ToArrayBuffer(originalEncryptedKey);
-    const iv = new Uint8Array(base64ToArrayBuffer(encryptedFile.iv));
-    console.log('🔓 Decrypting original AES key...');
-    
-    // Decrypt the original AES key
-    const rawKey = await window.crypto.subtle.decrypt(
-      { name: "AES-GCM", iv },
-      derivedKey,
-      originalKeyBytes
-    );
-    console.log('✅ Original AES key decrypted successfully');
-    
-    // Import the AES key
-    const aesKey = await window.crypto.subtle.importKey(
-      "raw",
-      rawKey,
-      { name: "AES-GCM" },
-      false,
-      ["decrypt"]
-    );
-    console.log('🔑 AES key imported for file decryption');
-    
-    // Decrypt the file data
-    const encryptedData = base64ToArrayBuffer(encryptedFile.encryptedData);
-    console.log('🔓 Decrypting file data...');
-    const decryptedData = await window.crypto.subtle.decrypt(
-      { name: "AES-GCM", iv },
-      aesKey,
-      encryptedData
-    );
-    console.log('✅ File data decrypted successfully');
-
-    // Now re-encrypt the file data with the new recipients
-    const allAddresses = [...newRecipientAddresses, ownerAddress];
-    console.log('👥 All addresses for re-encryption:', allAddresses);
-    
-    // Generate new AES key for the updated file
-    const newAesKey = await window.crypto.subtle.generateKey(
-      { name: "AES-GCM", length: 256 },
-      true,
-      ["encrypt", "decrypt"]
-    );
-    console.log('🔑 New AES key generated');
-    
-    // Generate new IV
-    const newIv = window.crypto.getRandomValues(new Uint8Array(12));
-    console.log('🔢 New IV generated');
-    
-    // Encrypt the file data with the new AES key
-    const newEncryptedData = await window.crypto.subtle.encrypt(
-      { name: "AES-GCM", iv: newIv },
-      newAesKey,
-      decryptedData
-    );
-    console.log('🔐 File data re-encrypted with new AES key');
-    
-    // Export the new AES key as raw bytes
-    const newRawKey = await window.crypto.subtle.exportKey("raw", newAesKey);
-    console.log('📦 New AES key exported');
-    
-    // Encrypt the new AES key for all addresses
-    const newEncryptedKeys: Record<string, string> = {};
-    const currentUserMessage = `Encrypt file for sharing`;
-    const currentUserSignature = await getWalletSignature(currentUserMessage);
-    console.log('✍️ Current user signature obtained for re-encryption');
-    
-    for (const address of allAddresses) {
-      console.log(`🔐 Encrypting new AES key for address: ${address}`);
-      // Create a unique key for each address using the current user's signature
-      const addressKey = `${currentUserSignature}:${address.toLowerCase()}`;
-      const keyBytes = new TextEncoder().encode(addressKey);
-      
-      // Use a simple hash-based approach for key derivation
-      const keyHash = await window.crypto.subtle.digest("SHA-256", keyBytes);
-      const derivedKey = await window.crypto.subtle.importKey(
-        "raw",
-        keyHash,
-        { name: "AES-GCM" },
-        false,
-        ["encrypt"]
-      );
-      
-      const encryptedKey = await window.crypto.subtle.encrypt(
-        { name: "AES-GCM", iv: newIv },
-        derivedKey,
-        newRawKey
-      );
-      
-      newEncryptedKeys[address.toLowerCase()] = arrayBufferToBase64(encryptedKey);
-      console.log(`✅ Encrypted key created for ${address}`);
-    }
-
-    // Create the updated encrypted file object
+    // Create updated encrypted file with new recipients
     const updatedEncryptedFile: EncryptedFile = {
-      encryptedData: arrayBufferToBase64(newEncryptedData),
-      encryptedKeys: newEncryptedKeys,
-      iv: arrayBufferToBase64(newIv),
-      algorithm: "AES-256-GCM"
+      encryptedData: encryptedFile.encryptedData, // Keep same encrypted data
+      encryptedKeys: { ...encryptedFile.encryptedKeys }, // Copy existing keys
+      iv: encryptedFile.iv, // Keep same IV
+      algorithm: encryptedFile.algorithm
     };
+
+    // Add new recipients with the same shared key
+    for (const address of newRecipientAddresses) {
+      updatedEncryptedFile.encryptedKeys[address.toLowerCase()] = sharedEncryptedKey;
+      console.log(`✅ Added recipient: ${address.toLowerCase()}`);
+    }
+
     console.log('📦 Updated encrypted file object created');
 
     // Upload the updated encrypted file
@@ -314,7 +212,7 @@ export async function updateFileAccessControl(
 
     const updatedMetadata = {
       ...metadata,
-      recipientAddresses: newRecipientAddresses.map(addr => addr.toLowerCase()),
+      recipientAddresses: [...(metadata.recipientAddresses || []), ...newRecipientAddresses.map(addr => addr.toLowerCase())],
       updatedAt: new Date().toISOString(),
     };
 

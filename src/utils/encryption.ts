@@ -103,7 +103,7 @@ export async function encryptFileData(
   try {
     if (onProgress) onProgress(10);
 
-    // Generate AES key for this file
+    // Generate a single AES key for this file
     const aesKey = await generateAESKey();
     if (onProgress) onProgress(20);
 
@@ -125,30 +125,33 @@ export async function encryptFileData(
       allowedAddresses.push(ownerAddress);
     }
 
-    // Encrypt the AES key for each allowed address
+    // Encrypt the AES key once and share with everyone
     const encryptedKeys: Record<string, string> = {};
     
-    // Get a single signature for the current user
-    const currentUserMessage = `Encrypt file for sharing`;
-    const currentUserSignature = await getWalletSignature(currentUserMessage);
+    // Get a single signature for the current user (owner)
+    const message = `Encrypt file for sharing`;
+    const signature = await getWalletSignature(message);
     
+    // Create a shared key that everyone can use
+    const sharedKey = `${signature}:shared`;
+    const keyBytes = new TextEncoder().encode(sharedKey);
+    
+    // Use a simple hash-based approach for key derivation
+    const keyHash = await window.crypto.subtle.digest("SHA-256", keyBytes);
+    const derivedKey = await window.crypto.subtle.importKey(
+      "raw",
+      keyHash,
+      { name: "AES-GCM" },
+      false,
+      ["encrypt"]
+    );
+    
+    const encryptedKey = await encryptWithAES(rawKey, derivedKey, iv);
+    const sharedEncryptedKey = arrayBufferToBase64(encryptedKey);
+    
+    // Give everyone the same encrypted key
     for (const address of allowedAddresses) {
-      // Create a unique key for each address using the current user's signature
-      const addressKey = `${currentUserSignature}:${address.toLowerCase()}`;
-      const keyBytes = new TextEncoder().encode(addressKey);
-      
-      // Use a simple hash-based approach for key derivation
-      const keyHash = await window.crypto.subtle.digest("SHA-256", keyBytes);
-      const derivedKey = await window.crypto.subtle.importKey(
-        "raw",
-        keyHash,
-        { name: "AES-GCM" },
-        false,
-        ["encrypt"]
-      );
-      
-      const encryptedKey = await encryptWithAES(rawKey, derivedKey, iv);
-      encryptedKeys[address.toLowerCase()] = arrayBufferToBase64(encryptedKey);
+      encryptedKeys[address.toLowerCase()] = sharedEncryptedKey;
     }
 
     if (onProgress) onProgress(90);
@@ -193,20 +196,20 @@ export async function decryptFileData(
       throw new Error(`Access denied: Address ${userAddress} not authorized to decrypt this file`);
     }
 
-    // Get the encrypted key for this user
+    // Get the encrypted key (same for everyone now)
     const encryptedKeyBase64 = encryptedFile.encryptedKeys[userAddressLower];
     const encryptedKey = base64ToArrayBuffer(encryptedKeyBase64);
     
     // Get IV
     const iv = new Uint8Array(base64ToArrayBuffer(encryptedFile.iv));
     
-    // Create the same key derivation approach used in encryption
+    // Create the same shared key derivation approach used in encryption
     const currentUserMessage = `Encrypt file for sharing`;
     const currentUserSignature = await getWalletSignature(currentUserMessage);
     
-    // Create the same unique key for this address
-    const addressKey = `${currentUserSignature}:${userAddressLower}`;
-    const keyBytes = new TextEncoder().encode(addressKey);
+    // Create the same shared key that everyone uses
+    const sharedKey = `${currentUserSignature}:shared`;
+    const keyBytes = new TextEncoder().encode(sharedKey);
     
     // Use the same hash-based approach for key derivation
     const keyHash = await window.crypto.subtle.digest("SHA-256", keyBytes);
