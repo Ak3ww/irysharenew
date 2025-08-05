@@ -223,8 +223,8 @@ export function MyFiles({ address, isConnected, usernameSaved, refreshTrigger = 
       
       if (file.is_encrypted) {
         // Decrypt and download encrypted file
-        const { file: decryptedFile } = await downloadAndDecryptFromIrys(file.file_url, address);
-        fileData = await decryptedFile.arrayBuffer();
+        const decryptedData = await downloadAndDecryptFromIrys(file.file_url, address);
+        fileData = decryptedData;
       } else {
         // Download public file directly
         const response = await fetch(file.file_url);

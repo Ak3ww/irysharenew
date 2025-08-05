@@ -94,16 +94,17 @@ export function SharedFiles() {
   const previewEncryptedFile = async (file: any, cacheKey: string, onProgress: (progress: number, stage: string) => void) => {
     console.log('Loading encrypted file...');
     onProgress(10, 'Decrypting file...');
-    const { file: decryptedFile } = await downloadAndDecryptFromIrys(
+    const decryptedData = await downloadAndDecryptFromIrys(
       file.file_url,
       address!,
       (progress) => {
         onProgress(10 + (progress * 0.8), `Decrypting file... ${Math.round(progress)}%`);
       }
     );
-    console.log('Decrypted file:', decryptedFile.name, decryptedFile.type, decryptedFile.size);
+    console.log('Decrypted file data received');
     onProgress(90, 'Creating preview...');
-    const blobUrl = URL.createObjectURL(decryptedFile);
+    const blob = new Blob([decryptedData], { type: file.file_type || 'application/octet-stream' });
+    const blobUrl = URL.createObjectURL(blob);
     setPreviewCache(prev => new Map(prev).set(cacheKey, blobUrl));
     onProgress(100, 'Complete!');
     return blobUrl;
@@ -644,8 +645,9 @@ export function SharedFiles() {
                           try {
                             if (selectedFile.is_encrypted) {
                               // Download decrypted file
-                              const { file: decryptedFile } = await downloadAndDecryptFromIrys(selectedFile.file_url, address!);
-                              const url = URL.createObjectURL(decryptedFile);
+                              const decryptedData = await downloadAndDecryptFromIrys(selectedFile.file_url, address!);
+                              const blob = new Blob([decryptedData], { type: selectedFile.file_type || 'application/octet-stream' });
+                              const url = URL.createObjectURL(blob);
                               const a = document.createElement('a');
                               a.href = url;
                               a.download = selectedFile.file_name;

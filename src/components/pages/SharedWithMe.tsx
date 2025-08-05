@@ -291,8 +291,8 @@ export function SharedWithMe({ address, isConnected, usernameSaved, refreshTrigg
       
       if (file.is_encrypted) {
         // Decrypt and download encrypted file
-        const { file: decryptedFile } = await downloadAndDecryptFromIrys(file.file_url, address);
-        fileData = await decryptedFile.arrayBuffer();
+        const decryptedData = await downloadAndDecryptFromIrys(file.file_url, address);
+        fileData = decryptedData;
       } else {
         // Download public file directly
         const response = await fetch(file.file_url);
