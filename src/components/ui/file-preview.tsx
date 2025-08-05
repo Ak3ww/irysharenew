@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Download, Share, UserPlus, Check, AlertCircle, Info } from 'lucide-react';
-import { downloadAndDecryptFromIrys, updateFileAccessControl } from '../../utils/litIrys';
+import { downloadAndDecryptFromIrys, updateFileAccessControl } from '../../utils/aesIrys';
 import { supabase } from '../../utils/supabase';
 
 interface FileData {
@@ -108,8 +108,8 @@ export function FilePreview({ file, address, onClose, onFileViewed, showSharePan
       
       if (file.is_encrypted) {
         // Decrypt and download encrypted file
-        const { file: decryptedFile } = await downloadAndDecryptFromIrys(file.file_url, address);
-        fileData = await decryptedFile.arrayBuffer();
+        const decryptedData = await downloadAndDecryptFromIrys(file.file_url, address);
+        fileData = decryptedData;
       } else {
         // Download public file directly
         const response = await fetch(file.file_url);
@@ -354,33 +354,33 @@ export function FilePreview({ file, address, onClose, onFileViewed, showSharePan
         }
         
         // Decrypt and preview encrypted file
-        const { file: decryptedFile } = await downloadAndDecryptFromIrys(file.file_url, address);
+        const decryptedData = await downloadAndDecryptFromIrys(file.file_url, address);
         
         if (isImage(file)) {
           // Create blob URL for image preview
-          const blob = new Blob([decryptedFile], { type: file.file_type });
+          const blob = new Blob([decryptedData], { type: file.file_type });
           const url = URL.createObjectURL(blob);
           setPreviewData(url);
         } else if (isPDF(file)) {
           // Create blob URL for PDF preview
-          const blob = new Blob([decryptedFile], { type: 'application/pdf' });
+          const blob = new Blob([decryptedData], { type: 'application/pdf' });
           const url = URL.createObjectURL(blob);
           setPreviewData(url);
         } else if (isVideo(file)) {
           // Create blob URL for video preview
-          const blob = new Blob([decryptedFile], { type: file.file_type });
+          const blob = new Blob([decryptedData], { type: file.file_type });
           const url = URL.createObjectURL(blob);
           setPreviewData(url);
         } else if (isAudio(file)) {
           // Create blob URL for audio preview
           console.log('🎵 Creating audio preview for:', file.file_name, 'Type:', file.file_type);
-          const blob = new Blob([decryptedFile], { type: file.file_type || 'audio/mpeg' });
+          const blob = new Blob([decryptedData], { type: file.file_type || 'audio/mpeg' });
           const url = URL.createObjectURL(blob);
           console.log('🎵 Audio blob URL created:', url);
           setPreviewData(url);
         } else {
           // Text file - convert to string
-          const text = new TextDecoder().decode(await decryptedFile.arrayBuffer());
+          const text = new TextDecoder().decode(decryptedData);
           setPreviewData(text);
         }
       } else {

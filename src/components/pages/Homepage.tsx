@@ -5,7 +5,7 @@ import { MyFiles } from './MyFiles';
 import { FileInput } from '../ui/file-input';
 import { supabase } from '../../utils/supabase';
 import { uploadFile } from '../../utils/irys';
-import { uploadEncryptedToIrys } from '../../utils/litIrys';
+import { uploadEncryptedToIrys } from '../../utils/aesIrys';
 import { getIrysUploader } from '../../utils/irys';
 import { useToast } from '../../hooks/use-toast';
 import { trackFileUpload, trackError, trackPageView } from '../../utils/analytics';

@@ -282,7 +282,9 @@ export function ShareModal({ file, address, onClose, onRecipientAdded }: ShareMo
 
         {/* File Info */}
         <div className="mb-6 p-4 bg-white/5 rounded-lg">
-          <p className="text-white font-medium text-sm mb-1">{file.file_name}</p>
+          <p className="text-white font-medium text-sm mb-1 truncate max-w-full" title={file.file_name}>
+  {file.file_name.length > 50 ? file.file_name.substring(0, 47) + '...' : file.file_name}
+</p>
           <p className="text-white/60 text-xs">
             {file.is_encrypted ? 'Encrypted file' : 'Public file'}
           </p>
