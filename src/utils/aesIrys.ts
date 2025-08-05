@@ -133,18 +133,49 @@ export async function updateFileAccessControl(
   ownerAddress: string
 ): Promise<string> {
   try {
+    console.log('🔍 Starting updateFileAccessControl for transaction:', transactionId);
+    console.log('📋 New recipients:', newRecipientAddresses);
+    console.log('👤 Owner address:', ownerAddress);
+    
     // Download current encrypted file
     const response = await fetch(`https://gateway.irys.xyz/${transactionId}`);
+    console.log('📥 Response status:', response.status);
+    console.log('📥 Response headers:', Object.fromEntries(response.headers.entries()));
+    
     if (!response.ok) {
-      throw new Error(`Failed to download file: ${response.statusText}`);
+      const errorText = await response.text();
+      console.error('❌ Gateway error response:', errorText);
+      throw new Error(`Failed to download file: ${response.statusText} - ${errorText}`);
     }
 
-    const data = await response.json();
+    const responseText = await response.text();
+    console.log('📄 Response text length:', responseText.length);
+    console.log('📄 Response text preview:', responseText.substring(0, 200));
+    
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('❌ JSON parse error:', parseError);
+      console.error('❌ Response text:', responseText);
+      
+      // Check if this is an old Lit Protocol file
+      if (responseText.includes('<!doctype') || responseText.includes('<html')) {
+        throw new Error('Legacy file format detected. This file was encrypted with the old Lit Protocol system and cannot be updated with the new AES system. Please re-upload the file.');
+      }
+      
+      throw new Error(`Invalid JSON response from gateway: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
+    }
+    
     const { encryptedFile, metadata } = data;
+    console.log('✅ Successfully parsed encrypted file data');
+    console.log('🔐 Encrypted keys count:', Object.keys(encryptedFile.encryptedKeys).length);
+    console.log('🔑 Available addresses:', Object.keys(encryptedFile.encryptedKeys));
 
     // First, decrypt the original file data using the owner's signature
     const originalMessage = `Encrypt file for sharing`;
     const originalSignature = await getWalletSignature(originalMessage);
+    console.log('✍️ Original signature obtained');
     
     // Create the same key derivation approach used in encryption
     const addressKey = `${originalSignature}:${ownerAddress.toLowerCase()}`;
@@ -157,15 +188,20 @@ export async function updateFileAccessControl(
       false,
       ["decrypt"]
     );
+    console.log('🔑 Derived key created for owner');
     
     // Get the original AES key
     const originalEncryptedKey = encryptedFile.encryptedKeys[ownerAddress.toLowerCase()];
     if (!originalEncryptedKey) {
+      console.error('❌ Owner address not found in encrypted keys:', ownerAddress.toLowerCase());
+      console.error('❌ Available addresses:', Object.keys(encryptedFile.encryptedKeys));
       throw new Error('Cannot find original AES key for owner');
     }
+    console.log('🔑 Found original encrypted key for owner');
 
     const originalKeyBytes = base64ToArrayBuffer(originalEncryptedKey);
     const iv = new Uint8Array(base64ToArrayBuffer(encryptedFile.iv));
+    console.log('🔓 Decrypting original AES key...');
     
     // Decrypt the original AES key
     const rawKey = await window.crypto.subtle.decrypt(
@@ -173,6 +209,7 @@ export async function updateFileAccessControl(
       derivedKey,
       originalKeyBytes
     );
+    console.log('✅ Original AES key decrypted successfully');
     
     // Import the AES key
     const aesKey = await window.crypto.subtle.importKey(
@@ -182,17 +219,21 @@ export async function updateFileAccessControl(
       false,
       ["decrypt"]
     );
+    console.log('🔑 AES key imported for file decryption');
     
     // Decrypt the file data
     const encryptedData = base64ToArrayBuffer(encryptedFile.encryptedData);
+    console.log('🔓 Decrypting file data...');
     const decryptedData = await window.crypto.subtle.decrypt(
       { name: "AES-GCM", iv },
       aesKey,
       encryptedData
     );
+    console.log('✅ File data decrypted successfully');
 
     // Now re-encrypt the file data with the new recipients
     const allAddresses = [...newRecipientAddresses, ownerAddress];
+    console.log('👥 All addresses for re-encryption:', allAddresses);
     
     // Generate new AES key for the updated file
     const newAesKey = await window.crypto.subtle.generateKey(
@@ -200,9 +241,11 @@ export async function updateFileAccessControl(
       true,
       ["encrypt", "decrypt"]
     );
+    console.log('🔑 New AES key generated');
     
     // Generate new IV
     const newIv = window.crypto.getRandomValues(new Uint8Array(12));
+    console.log('🔢 New IV generated');
     
     // Encrypt the file data with the new AES key
     const newEncryptedData = await window.crypto.subtle.encrypt(
@@ -210,16 +253,20 @@ export async function updateFileAccessControl(
       newAesKey,
       decryptedData
     );
+    console.log('🔐 File data re-encrypted with new AES key');
     
     // Export the new AES key as raw bytes
     const newRawKey = await window.crypto.subtle.exportKey("raw", newAesKey);
+    console.log('📦 New AES key exported');
     
     // Encrypt the new AES key for all addresses
     const newEncryptedKeys: Record<string, string> = {};
     const currentUserMessage = `Encrypt file for sharing`;
     const currentUserSignature = await getWalletSignature(currentUserMessage);
+    console.log('✍️ Current user signature obtained for re-encryption');
     
     for (const address of allAddresses) {
+      console.log(`🔐 Encrypting new AES key for address: ${address}`);
       // Create a unique key for each address using the current user's signature
       const addressKey = `${currentUserSignature}:${address.toLowerCase()}`;
       const keyBytes = new TextEncoder().encode(addressKey);
@@ -241,6 +288,7 @@ export async function updateFileAccessControl(
       );
       
       newEncryptedKeys[address.toLowerCase()] = arrayBufferToBase64(encryptedKey);
+      console.log(`✅ Encrypted key created for ${address}`);
     }
 
     // Create the updated encrypted file object
@@ -250,6 +298,7 @@ export async function updateFileAccessControl(
       iv: arrayBufferToBase64(newIv),
       algorithm: "AES-256-GCM"
     };
+    console.log('📦 Updated encrypted file object created');
 
     // Upload the updated encrypted file
     const rpcURL = "https://1rpc.io/sepolia";
@@ -261,6 +310,7 @@ export async function updateFileAccessControl(
       .devnet();
     
     await irysUploader.ready();
+    console.log('🚀 Irys uploader ready');
 
     const updatedMetadata = {
       ...metadata,
@@ -272,6 +322,7 @@ export async function updateFileAccessControl(
       encryptedFile: updatedEncryptedFile,
       metadata: updatedMetadata
     });
+    console.log('📤 Uploading updated file to Irys...');
     
     const receipt = await irysUploader.upload(dataToUpload, {
       tags: [
@@ -284,10 +335,11 @@ export async function updateFileAccessControl(
       ]
     });
 
+    console.log('✅ File uploaded successfully with ID:', receipt.id);
     return receipt.id;
 
   } catch (error) {
-    console.error('Update access control error:', error);
+    console.error('❌ Update access control error:', error);
     throw new Error(`Update failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
