@@ -88,19 +88,15 @@ export function FilePreview({ file, address, onClose, onFileViewed, showSharePan
       // CRITICAL SECURITY CHECK: Verify user has permission to download this file
       // Allow access if: file is public, user owns it, OR user is a recipient (shared file)
       if (!file.is_public && !file.is_owned && !file.recipient_address) {
-        console.error('❌ Access denied: User does not have permission to download this private file');
         alert('Access denied: You do not have permission to download this file');
         return;
       }
       
       // ADDITIONAL SECURITY: For encrypted files, only owner or recipients can download
       if (file.is_encrypted && !file.is_owned && !file.recipient_address) {
-        console.error('❌ Access denied: Only file owner or recipients can download encrypted files');
         alert('Access denied: Only the file owner or recipients can download encrypted files');
         return;
       }
-      
-      console.log('📥 Starting download for:', file.file_name);
       
       let fileData: ArrayBuffer;
       const fileName = file.file_name;
@@ -132,9 +128,7 @@ export function FilePreview({ file, address, onClose, onFileViewed, showSharePan
       
       // Clean up
       URL.revokeObjectURL(url);
-      console.log('✅ Download completed:', fileName);
     } catch (error) {
-      console.error('❌ Download error:', error);
       alert(`Download failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
@@ -244,8 +238,7 @@ export function FilePreview({ file, address, onClose, onFileViewed, showSharePan
       const currentRecipients = existingShares?.map(share => share.recipient_address) || [];
       const allRecipients = [...new Set([...currentRecipients, resolvedNewRecipient.address.toLowerCase()])];
 
-      console.log('Current recipients:', currentRecipients);
-      console.log('All recipients after adding:', allRecipients);
+
 
       setAddingRecipientsProgress(25);
       setAddingRecipientsStage('Preparing access control update...');
@@ -260,7 +253,7 @@ export function FilePreview({ file, address, onClose, onFileViewed, showSharePan
         file.owner_address
       );
 
-      console.log('Access control updated, new URL:', newFileUrl);
+
       
       setAddingRecipientsProgress(85);
       setAddingRecipientsStage('Updating database...');
@@ -275,7 +268,6 @@ export function FilePreview({ file, address, onClose, onFileViewed, showSharePan
         .eq('id', file.id);
 
       if (updateFileError) {
-        console.error('Error updating file URL:', updateFileError);
         throw new Error('Failed to update file URL in database');
       }
 
@@ -292,7 +284,7 @@ export function FilePreview({ file, address, onClose, onFileViewed, showSharePan
         throw new Error('Failed to add recipient to file shares');
       }
       
-      console.log('Successfully added recipient:', resolvedNewRecipient.address);
+
       
       setAddingRecipientsProgress(100);
       setAddingRecipientsStage('Recipient added successfully!');
@@ -309,7 +301,6 @@ export function FilePreview({ file, address, onClose, onFileViewed, showSharePan
       }, 2000);
       
     } catch (error) {
-      console.error('Error adding recipient:', error);
       alert(`Failed to add recipient: ${error instanceof Error ? error.message : 'Unknown error'}`);
       setAddingRecipients(false);
       setAddingRecipientsProgress(0);
@@ -322,7 +313,6 @@ export function FilePreview({ file, address, onClose, onFileViewed, showSharePan
     // Security check: Verify user has permission to view this file
     // Allow access if: file is public, user owns it, OR user is a recipient (shared file)
     if (!file.is_public && !file.is_owned && !file.recipient_address) {
-      console.error('❌ Access denied: User does not have permission to view this private file');
       setPreviewError('Access denied: You do not have permission to view this file');
       setPreviewLoading(false);
       return;

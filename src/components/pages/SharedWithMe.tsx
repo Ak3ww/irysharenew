@@ -79,7 +79,7 @@ export function SharedWithMe({ address, isConnected, usernameSaved, refreshTrigg
     if (!address || !isConnected || !usernameSaved) return;
     
     setLoading(true);
-    console.log('🔄 Fetching SharedWithMe for address:', address);
+
     const normalizedAddress = address.toLowerCase().trim();
     
     const { data, error } = await supabase.rpc('get_user_files', { user_address: normalizedAddress });
@@ -97,7 +97,7 @@ export function SharedWithMe({ address, isConnected, usernameSaved, refreshTrigg
       const dateB = b.shared_at ? new Date(b.shared_at) : new Date(b.created_at);
       return dateB.getTime() - dateA.getTime();
     });
-    console.log('📁 Found', sharedFiles.length, 'shared files');
+    
     setSharedFiles(sharedFiles);
     
     // Check for new files (shared in the last 24 hours)
@@ -109,7 +109,7 @@ export function SharedWithMe({ address, isConnected, usernameSaved, refreshTrigg
     });
     setNewFilesCount(newFiles.length);
     
-    console.log('📊 New files count:', newFiles.length, 'Total viewed files:', viewedFiles.size);
+    
     
     setLoading(false);
   };
@@ -123,7 +123,7 @@ export function SharedWithMe({ address, isConnected, usernameSaved, refreshTrigg
   useEffect(() => {
     if (!address || !isConnected || !usernameSaved) return;
 
-    console.log('🔔 Setting up real-time subscription for SharedWithMe');
+    
     setRealTimeStatus('connecting');
     const normalizedAddress = address.toLowerCase().trim();
 
@@ -139,13 +139,13 @@ export function SharedWithMe({ address, isConnected, usernameSaved, refreshTrigg
           filter: `recipient_address=eq.${normalizedAddress}`
         },
         (payload) => {
-          console.log('📡 Real-time update received for shared files:', payload);
+  
           // Refetch files when there's a change
           fetchFiles();
         }
       )
       .subscribe((status) => {
-        console.log('📡 Shares subscription status:', status);
+
         if (status === 'SUBSCRIBED') {
           setRealTimeStatus('connected');
         } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
@@ -164,17 +164,17 @@ export function SharedWithMe({ address, isConnected, usernameSaved, refreshTrigg
           table: 'files'
         },
         (payload) => {
-          console.log('📡 Real-time update received for files table:', payload);
+  
           // Refetch files when there's a change
           fetchFiles();
         }
       )
       .subscribe((status) => {
-        console.log('📡 Files subscription status:', status);
+
       });
 
     return () => {
-      console.log('🔕 Cleaning up real-time subscriptions for SharedWithMe');
+
       setRealTimeStatus('disconnected');
       supabase.removeChannel(sharesSubscription);
       supabase.removeChannel(filesSubscription);
@@ -283,7 +283,7 @@ export function SharedWithMe({ address, isConnected, usernameSaved, refreshTrigg
   // Direct download function
   const handleDirectDownload = async (file: FileData) => {
     try {
-      console.log('📥 Starting direct download for:', file.file_name);
+
       
       let fileData: ArrayBuffer;
       const fileName = file.file_name;
@@ -314,11 +314,10 @@ export function SharedWithMe({ address, isConnected, usernameSaved, refreshTrigg
       
       // Clean up
       URL.revokeObjectURL(url);
-      console.log('✅ Direct download completed:', fileName);
-    } catch (error) {
-      console.error('❌ Direct download error:', error);
-      alert(`Download failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
+
+          } catch (error) {
+        alert(`Download failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
   };
 
 

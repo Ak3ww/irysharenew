@@ -133,7 +133,6 @@ export async function updateFileAccessControl(
   ownerAddress: string
 ): Promise<string> {
   try {
-
     // Download current encrypted file
     const response = await fetch(`https://gateway.irys.xyz/${transactionId}`);
     if (!response.ok) {
@@ -151,57 +150,62 @@ export async function updateFileAccessControl(
       algorithm: encryptedFile.algorithm
     };
 
-    // Re-encrypt the AES key for all addresses (owner + new recipients)
+    // Get the original AES key by decrypting it with the owner's signature
+    const originalEncryptedKey = encryptedFile.encryptedKeys[ownerAddress.toLowerCase()];
+    if (!originalEncryptedKey) {
+      throw new Error('Cannot find original AES key for owner');
+    }
+
+    // Decrypt the original AES key using the owner's signature
+    const originalKeyBytes = base64ToArrayBuffer(originalEncryptedKey);
+    const iv = new Uint8Array(base64ToArrayBuffer(encryptedFile.iv));
+    
+    const originalMessage = `Encrypt file for sharing`;
+    const originalSignature = await getWalletSignature(originalMessage);
+    
+    // Create the same key derivation approach used in encryption
+    const addressKey = `${originalSignature}:${ownerAddress.toLowerCase()}`;
+    const keyBytes = new TextEncoder().encode(addressKey);
+    const keyHash = await window.crypto.subtle.digest("SHA-256", keyBytes);
+    const derivedKey = await window.crypto.subtle.importKey(
+      "raw",
+      keyHash,
+      { name: "AES-GCM" },
+      false,
+      ["decrypt"]
+    );
+    
+    // Decrypt the original AES key
+    const rawKey = await window.crypto.subtle.decrypt(
+      { name: "AES-GCM", iv },
+      derivedKey,
+      originalKeyBytes
+    );
+
+    // Now re-encrypt the AES key for all addresses (owner + new recipients)
     const allAddresses = [...newRecipientAddresses, ownerAddress];
     
     for (const address of allAddresses) {
       // Create a unique message for each address
-      const message = `Decrypt file for address: ${address.toLowerCase()}`;
-      
-      // Get signature from the current user (file owner)
+      const message = `Encrypt file for sharing`;
       const signature = await getWalletSignature(message);
       
-      // Use the signature as a key to encrypt the AES key
-      const signatureBytes = new TextEncoder().encode(signature);
-      const derivedKey = await window.crypto.subtle.importKey(
+      // Create the same unique key for this address
+      const addressKey = `${signature}:${address.toLowerCase()}`;
+      const addressKeyBytes = new TextEncoder().encode(addressKey);
+      const addressKeyHash = await window.crypto.subtle.digest("SHA-256", addressKeyBytes);
+      const addressDerivedKey = await window.crypto.subtle.importKey(
         "raw",
-        signatureBytes,
+        addressKeyHash,
         { name: "AES-GCM" },
         false,
         ["encrypt"]
       );
       
-      // Get the original AES key (we need to decrypt it first)
-      const originalEncryptedKey = encryptedFile.encryptedKeys[ownerAddress.toLowerCase()];
-      if (!originalEncryptedKey) {
-        throw new Error('Cannot find original AES key for owner');
-      }
-
-      // Decrypt the original AES key
-      const originalKeyBytes = base64ToArrayBuffer(originalEncryptedKey);
-      const iv = new Uint8Array(base64ToArrayBuffer(encryptedFile.iv));
-      
-      const originalMessage = `Decrypt file for address: ${ownerAddress.toLowerCase()}`;
-      const originalSignature = await getWalletSignature(originalMessage);
-      const originalSignatureBytes = new TextEncoder().encode(originalSignature);
-      const originalDerivedKey = await window.crypto.subtle.importKey(
-        "raw",
-        originalSignatureBytes,
-        { name: "AES-GCM" },
-        false,
-        ["decrypt"]
-      );
-      
-      const rawKey = await window.crypto.subtle.decrypt(
-        { name: "AES-GCM", iv },
-        originalDerivedKey,
-        originalKeyBytes
-      );
-      
       // Re-encrypt the AES key for this address
       const encryptedKey = await window.crypto.subtle.encrypt(
         { name: "AES-GCM", iv },
-        derivedKey,
+        addressDerivedKey,
         rawKey
       );
       
