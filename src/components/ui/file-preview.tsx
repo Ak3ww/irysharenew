@@ -258,7 +258,7 @@ export function FilePreview({ file, address, onClose, onFileViewed, showSharePan
         file.owner_address
       );
 
-
+      console.log('✅ New file URL received:', newFileUrl);
       
       setAddingRecipientsProgress(85);
       setAddingRecipientsStage('Updating database...');
@@ -273,8 +273,11 @@ export function FilePreview({ file, address, onClose, onFileViewed, showSharePan
         .eq('id', file.id);
 
       if (updateFileError) {
+        console.error('❌ Database update error:', updateFileError);
         throw new Error('Failed to update file URL in database');
       }
+      
+      console.log('✅ File URL updated in database successfully');
 
       // Add the new recipient to file_shares table
       const { error: insertError } = await supabase
@@ -286,8 +289,11 @@ export function FilePreview({ file, address, onClose, onFileViewed, showSharePan
         });
       
       if (insertError) {
+        console.error('❌ File shares insert error:', insertError);
         throw new Error('Failed to add recipient to file shares');
       }
+      
+      console.log('✅ Recipient added to file shares successfully');
       
 
       
