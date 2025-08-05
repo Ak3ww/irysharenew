@@ -168,8 +168,6 @@ export async function encryptFileData(
       .join('');
 
     if (onProgress) onProgress(100);
-
-    console.log('[AES] Encryption completed');
     
     return {
       encryptedFile,
@@ -177,7 +175,7 @@ export async function encryptFileData(
     };
 
   } catch (error) {
-    console.error('AES encryption error:', error);
+    console.error('Encryption error:', error);
     throw new Error(`Encryption failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
@@ -188,8 +186,6 @@ export async function decryptFileData(
   userAddress: string
 ): Promise<ArrayBuffer> {
   try {
-    console.log('[AES] Starting decryption');
-    
     const userAddressLower = userAddress.toLowerCase();
     
     // Check if user has access to this file
@@ -238,12 +234,10 @@ export async function decryptFileData(
     const encryptedData = base64ToArrayBuffer(encryptedFile.encryptedData);
     const decryptedData = await decryptWithAES(encryptedData, aesKey, iv);
     
-    console.log('[AES] Decryption completed');
-    
     return decryptedData;
 
   } catch (error) {
-    console.error('AES decryption error:', error);
+    console.error('Decryption error:', error);
     throw new Error(`Decryption failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }

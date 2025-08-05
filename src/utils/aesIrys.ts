@@ -15,8 +15,6 @@ export async function uploadEncryptedToIrys(
   onProgress?: (progress: number) => void
 ): Promise<string> {
   try {
-    console.log('[AES-Irys] Starting upload');
-    
     if (onProgress) onProgress(5);
 
     // Encrypt the file data with AES-256-GCM
@@ -75,11 +73,10 @@ export async function uploadEncryptedToIrys(
 
     if (onProgress) onProgress(100);
 
-    console.log('[AES-Irys] Upload completed');
     return receipt.id;
 
   } catch (error) {
-    console.error('AES Irys upload error:', error);
+    console.error('Upload error:', error);
     throw new Error(`Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
@@ -91,8 +88,6 @@ export async function downloadAndDecryptFromIrys(
   onProgress?: (progress: number) => void
 ): Promise<ArrayBuffer> {
   try {
-    console.log('[AES-Irys] Downloading file from:', transactionId);
-    
     if (onProgress) onProgress(10);
 
     // Download the encrypted file from Irys
@@ -111,7 +106,6 @@ export async function downloadAndDecryptFromIrys(
       data = await response.json();
     } catch (jsonError) {
       // If JSON parsing fails, it might be an old Lit Protocol file
-      console.log('[AES-Irys] File appears to be in old format, attempting legacy decryption');
       throw new Error('Legacy file format detected. This file was encrypted with the old system and cannot be decrypted with the new AES system.');
     }
 
@@ -119,18 +113,15 @@ export async function downloadAndDecryptFromIrys(
 
     if (onProgress) onProgress(50);
 
-    console.log('[AES-Irys] Proceeding to AES decryption');
-
     // Decrypt the file data
     const decryptedData = await decryptFileData(encryptedFile, userAddress);
 
     if (onProgress) onProgress(100);
 
-    console.log('[AES-Irys] Decryption completed');
     return decryptedData;
 
   } catch (error) {
-    console.error('[AES-Irys] Download/decrypt error:', error);
+    console.error('Download/decrypt error:', error);
     throw new Error(`Download/Decrypt failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
@@ -142,7 +133,6 @@ export async function updateFileAccessControl(
   ownerAddress: string
 ): Promise<string> {
   try {
-    console.log('[AES-Irys] Updating access control');
 
     // Download current encrypted file
     const response = await fetch(`https://gateway.irys.xyz/${transactionId}`);
@@ -251,7 +241,6 @@ export async function updateFileAccessControl(
       ]
     });
 
-    console.log('[AES-Irys] Access control updated');
     return receipt.id;
 
   } catch (error) {

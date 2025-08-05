@@ -341,14 +341,11 @@ export function FilePreview({ file, address, onClose, onFileViewed, showSharePan
     setShowSharePanel(false);
 
     try {
-      console.log('🔍 Previewing file:', file.file_name);
-      
       if (file.is_encrypted) {
         // Additional security check for encrypted files
         // Allow access if: user owns it OR user is a recipient (shared file)
         if (!file.is_owned && !file.recipient_address) {
           // For encrypted files, only the owner or recipients should be able to decrypt
-          console.error('❌ Access denied: Only file owner or recipients can decrypt encrypted files');
           setPreviewError('Access denied: Only the file owner or recipients can view encrypted files');
           return;
         }
@@ -373,10 +370,8 @@ export function FilePreview({ file, address, onClose, onFileViewed, showSharePan
           setPreviewData(url);
         } else if (isAudio(file)) {
           // Create blob URL for audio preview
-          console.log('🎵 Creating audio preview for:', file.file_name, 'Type:', file.file_type);
           const blob = new Blob([decryptedData], { type: file.file_type || 'audio/mpeg' });
           const url = URL.createObjectURL(blob);
-          console.log('🎵 Audio blob URL created:', url);
           setPreviewData(url);
         } else {
           // Text file - convert to string
@@ -394,7 +389,6 @@ export function FilePreview({ file, address, onClose, onFileViewed, showSharePan
         
         // CRITICAL FIX: Check content type to prevent JSON parsing errors
         const contentType = response.headers.get('content-type');
-        console.log('📄 Content-Type:', contentType);
         
         // For images, videos, audio - use blob directly
         if (isImage(file) || isVideo(file) || isAudio(file)) {
@@ -416,8 +410,7 @@ export function FilePreview({ file, address, onClose, onFileViewed, showSharePan
             try {
               const text = await response.text();
               setPreviewData(text);
-            } catch (textError) {
-              console.warn('⚠️ Could not read as text, treating as binary:', textError);
+            } catch {
               // Fallback to blob for unknown types
               const blob = await response.blob();
               const url = URL.createObjectURL(blob);
@@ -426,10 +419,8 @@ export function FilePreview({ file, address, onClose, onFileViewed, showSharePan
           }
         }
       }
-      
-      console.log('✅ File preview loaded successfully');
     } catch (error) {
-      console.error('❌ Preview error:', error);
+      console.error('Preview error:', error);
       setPreviewError(error instanceof Error ? error.message : 'Failed to preview file');
     } finally {
       setPreviewLoading(false);
@@ -699,13 +690,13 @@ export function FilePreview({ file, address, onClose, onFileViewed, showSharePan
                       controls
                       preload="metadata"
                       onError={(e) => {
-                        console.error('🎵 Audio playback error:', e);
+                        console.error('Audio playback error:', e);
                       }}
                       onLoadStart={() => {
-                        console.log('🎵 Audio loading started');
+                        // Audio loading started
                       }}
                       onCanPlay={() => {
-                        console.log('🎵 Audio can play');
+                        // Audio can play
                       }}
                     >
                       Your browser does not support the audio tag.

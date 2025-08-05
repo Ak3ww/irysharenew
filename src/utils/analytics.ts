@@ -8,9 +8,7 @@ declare global {
 
 // Track custom events
 export function trackEvent(eventName: string, parameters?: Record<string, any>) {
-  // Always log to console for debugging
-  console.log('🔍 Analytics Event:', eventName, parameters);
-  
+  // Only send to Google Analytics, no console logging
   if (typeof window !== 'undefined' && window.gtag) {
     window.gtag('event', eventName, parameters);
   }

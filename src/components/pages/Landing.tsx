@@ -51,7 +51,6 @@ export function Landing({ onLoginSuccess }: LandingProps) {
         setShowRegister(true);
       } else if (data) {
         // User exists - login successful
-        console.log('User found:', data.username);
         
         // Track user login
         trackUserLogin('metamask', address);
@@ -110,8 +109,6 @@ export function Landing({ onLoginSuccess }: LandingProps) {
         return;
       }
 
-      console.log('MetaMask signature received:', signature);
-
       // Step 3: Save username to Supabase with signature verification
       const { error } = await supabase
         .from('usernames')
@@ -128,7 +125,6 @@ export function Landing({ onLoginSuccess }: LandingProps) {
 
       // Step 4: Automatically approve user for future uploads
       try {
-        console.log('🔐 Approving user for future uploads...');
         const response = await fetch('/api/approve-user', {
           method: 'POST',
           headers: {
@@ -140,7 +136,7 @@ export function Landing({ onLoginSuccess }: LandingProps) {
         });
 
         if (response.ok) {
-          console.log('✅ User automatically approved for future uploads');
+          // User automatically approved for future uploads
         } else {
           console.warn('⚠️ Auto-approval failed, but registration was successful');
         }
@@ -151,8 +147,6 @@ export function Landing({ onLoginSuccess }: LandingProps) {
 
       // Step 5: Update any existing file_shares for this address
       // This is handled automatically by the database trigger
-      console.log('Registration successful with signature verification');
-      console.log('Any existing shared files will now be available');
       
       // Track user registration
       trackUserRegistration('metamask', address);
