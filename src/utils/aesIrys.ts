@@ -88,11 +88,18 @@ export async function downloadAndDecryptFromIrys(
   onProgress?: (progress: number) => void
 ): Promise<ArrayBuffer> {
   try {
+    console.log('📥 Starting download for transaction:', transactionId);
+    console.log('👤 User address:', userAddress);
+    
     if (onProgress) onProgress(10);
 
     // Download the encrypted file from Irys
     const response = await fetch(`https://gateway.irys.xyz/${transactionId}`);
+    console.log('📥 Response status:', response.status);
+    console.log('📥 Response headers:', Object.fromEntries(response.headers.entries()));
+    
     if (!response.ok) {
+      console.error('❌ Download failed:', response.statusText);
       throw new Error(`Failed to download file: ${response.statusText}`);
     }
 
@@ -100,28 +107,35 @@ export async function downloadAndDecryptFromIrys(
 
     // Check if response is JSON (AES format) or HTML (old Lit format)
     const contentType = response.headers.get('content-type');
+    console.log('📄 Content-Type:', contentType);
     let data;
     
     try {
       data = await response.json();
+      console.log('✅ Successfully parsed JSON response');
     } catch (jsonError) {
+      console.error('❌ JSON parse error:', jsonError);
       // If JSON parsing fails, it might be an old Lit Protocol file
       throw new Error('Legacy file format detected. This file was encrypted with the old system and cannot be decrypted with the new AES system.');
     }
 
     const { encryptedFile, metadata } = data;
+    console.log('🔐 Encrypted file keys count:', Object.keys(encryptedFile.encryptedKeys).length);
+    console.log('🔑 Available addresses:', Object.keys(encryptedFile.encryptedKeys));
 
     if (onProgress) onProgress(50);
 
     // Decrypt the file data
+    console.log('🔓 Starting decryption process...');
     const decryptedData = await decryptFileData(encryptedFile, userAddress);
+    console.log('✅ Decryption completed successfully');
 
     if (onProgress) onProgress(100);
 
     return decryptedData;
 
   } catch (error) {
-    console.error('Download/decrypt error:', error);
+    console.error('❌ Download/decrypt error:', error);
     throw new Error(`Download/Decrypt failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }

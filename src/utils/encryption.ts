@@ -186,29 +186,42 @@ export async function decryptFileData(
   userAddress: string
 ): Promise<ArrayBuffer> {
   try {
+    console.log('🔓 Starting decryption for user:', userAddress);
     const userAddressLower = userAddress.toLowerCase();
+    console.log('🔍 User address (lowercase):', userAddressLower);
     
     // Check if user has access to this file
+    console.log('🔑 Available encrypted keys:', Object.keys(encryptedFile.encryptedKeys));
     if (!encryptedFile.encryptedKeys[userAddressLower]) {
+      console.error('❌ User address not found in encrypted keys');
+      console.error('❌ User address:', userAddressLower);
+      console.error('❌ Available addresses:', Object.keys(encryptedFile.encryptedKeys));
       throw new Error(`Access denied: Address ${userAddress} not authorized to decrypt this file`);
     }
+    console.log('✅ User has access to this file');
 
     // Get the encrypted key for this specific user
     const encryptedKeyBase64 = encryptedFile.encryptedKeys[userAddressLower];
+    console.log('🔑 Found encrypted key for user');
     const encryptedKey = base64ToArrayBuffer(encryptedKeyBase64);
     
     // Get IV
     const iv = new Uint8Array(base64ToArrayBuffer(encryptedFile.iv));
+    console.log('🔢 IV extracted');
     
     // Create the same unique key derivation approach used in encryption
     const currentUserMessage = `Encrypt file for sharing`;
+    console.log('✍️ Getting signature for message:', currentUserMessage);
     const currentUserSignature = await getWalletSignature(currentUserMessage);
+    console.log('✅ Signature obtained');
     
     // Create the same unique key for this specific address
     const addressKey = `${currentUserSignature}:${userAddressLower}`;
+    console.log('🔑 Creating address key:', addressKey);
     const keyBytes = new TextEncoder().encode(addressKey);
     
     // Use the same hash-based approach for key derivation
+    console.log('🔐 Deriving key from address key...');
     const keyHash = await window.crypto.subtle.digest("SHA-256", keyBytes);
     const derivedKey = await window.crypto.subtle.importKey(
       "raw",
@@ -217,11 +230,15 @@ export async function decryptFileData(
       false,
       ["decrypt"]
     );
+    console.log('✅ Derived key created');
     
     // Decrypt the AES key
+    console.log('🔓 Decrypting AES key...');
     const rawKey = await decryptWithAES(encryptedKey, derivedKey, iv);
+    console.log('✅ AES key decrypted successfully');
     
     // Import the AES key
+    console.log('🔑 Importing AES key...');
     const aesKey = await window.crypto.subtle.importKey(
       "raw",
       rawKey,
@@ -229,15 +246,19 @@ export async function decryptFileData(
       false,
       ["decrypt"]
     );
+    console.log('✅ AES key imported');
     
     // Decrypt the file data
+    console.log('🔓 Decrypting file data...');
     const encryptedData = base64ToArrayBuffer(encryptedFile.encryptedData);
     const decryptedData = await decryptWithAES(encryptedData, aesKey, iv);
+    console.log('✅ File data decrypted successfully');
     
     return decryptedData;
 
   } catch (error) {
-    console.error('Decryption error:', error);
+    console.error('❌ Decryption error:', error);
+    console.error('❌ Error details:', error instanceof Error ? error.message : 'Unknown error');
     throw new Error(`Decryption failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
