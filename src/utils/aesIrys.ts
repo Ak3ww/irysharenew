@@ -142,24 +142,7 @@ export async function updateFileAccessControl(
     const data = await response.json();
     const { encryptedFile, metadata } = data;
 
-    // Create new encrypted file with updated recipients
-    const updatedEncryptedFile: EncryptedFile = {
-      encryptedData: encryptedFile.encryptedData, // Keep the same encrypted data
-      encryptedKeys: {}, // Will be populated with new keys
-      iv: encryptedFile.iv,
-      algorithm: encryptedFile.algorithm
-    };
-
-    // Get the original AES key by decrypting it with the owner's signature
-    const originalEncryptedKey = encryptedFile.encryptedKeys[ownerAddress.toLowerCase()];
-    if (!originalEncryptedKey) {
-      throw new Error('Cannot find original AES key for owner');
-    }
-
-    // Decrypt the original AES key using the owner's signature
-    const originalKeyBytes = base64ToArrayBuffer(originalEncryptedKey);
-    const iv = new Uint8Array(base64ToArrayBuffer(encryptedFile.iv));
-    
+    // First, decrypt the original file data using the owner's signature
     const originalMessage = `Encrypt file for sharing`;
     const originalSignature = await getWalletSignature(originalMessage);
     
@@ -175,42 +158,98 @@ export async function updateFileAccessControl(
       ["decrypt"]
     );
     
+    // Get the original AES key
+    const originalEncryptedKey = encryptedFile.encryptedKeys[ownerAddress.toLowerCase()];
+    if (!originalEncryptedKey) {
+      throw new Error('Cannot find original AES key for owner');
+    }
+
+    const originalKeyBytes = base64ToArrayBuffer(originalEncryptedKey);
+    const iv = new Uint8Array(base64ToArrayBuffer(encryptedFile.iv));
+    
     // Decrypt the original AES key
     const rawKey = await window.crypto.subtle.decrypt(
       { name: "AES-GCM", iv },
       derivedKey,
       originalKeyBytes
     );
+    
+    // Import the AES key
+    const aesKey = await window.crypto.subtle.importKey(
+      "raw",
+      rawKey,
+      { name: "AES-GCM" },
+      false,
+      ["decrypt"]
+    );
+    
+    // Decrypt the file data
+    const encryptedData = base64ToArrayBuffer(encryptedFile.encryptedData);
+    const decryptedData = await window.crypto.subtle.decrypt(
+      { name: "AES-GCM", iv },
+      aesKey,
+      encryptedData
+    );
 
-    // Now re-encrypt the AES key for all addresses (owner + new recipients)
+    // Now re-encrypt the file data with the new recipients
     const allAddresses = [...newRecipientAddresses, ownerAddress];
     
+    // Generate new AES key for the updated file
+    const newAesKey = await window.crypto.subtle.generateKey(
+      { name: "AES-GCM", length: 256 },
+      true,
+      ["encrypt", "decrypt"]
+    );
+    
+    // Generate new IV
+    const newIv = window.crypto.getRandomValues(new Uint8Array(12));
+    
+    // Encrypt the file data with the new AES key
+    const newEncryptedData = await window.crypto.subtle.encrypt(
+      { name: "AES-GCM", iv: newIv },
+      newAesKey,
+      decryptedData
+    );
+    
+    // Export the new AES key as raw bytes
+    const newRawKey = await window.crypto.subtle.exportKey("raw", newAesKey);
+    
+    // Encrypt the new AES key for all addresses
+    const newEncryptedKeys: Record<string, string> = {};
+    const currentUserMessage = `Encrypt file for sharing`;
+    const currentUserSignature = await getWalletSignature(currentUserMessage);
+    
     for (const address of allAddresses) {
-      // Create a unique message for each address
-      const message = `Encrypt file for sharing`;
-      const signature = await getWalletSignature(message);
+      // Create a unique key for each address using the current user's signature
+      const addressKey = `${currentUserSignature}:${address.toLowerCase()}`;
+      const keyBytes = new TextEncoder().encode(addressKey);
       
-      // Create the same unique key for this address
-      const addressKey = `${signature}:${address.toLowerCase()}`;
-      const addressKeyBytes = new TextEncoder().encode(addressKey);
-      const addressKeyHash = await window.crypto.subtle.digest("SHA-256", addressKeyBytes);
-      const addressDerivedKey = await window.crypto.subtle.importKey(
+      // Use a simple hash-based approach for key derivation
+      const keyHash = await window.crypto.subtle.digest("SHA-256", keyBytes);
+      const derivedKey = await window.crypto.subtle.importKey(
         "raw",
-        addressKeyHash,
+        keyHash,
         { name: "AES-GCM" },
         false,
         ["encrypt"]
       );
       
-      // Re-encrypt the AES key for this address
       const encryptedKey = await window.crypto.subtle.encrypt(
-        { name: "AES-GCM", iv },
-        addressDerivedKey,
-        rawKey
+        { name: "AES-GCM", iv: newIv },
+        derivedKey,
+        newRawKey
       );
       
-      updatedEncryptedFile.encryptedKeys[address.toLowerCase()] = arrayBufferToBase64(encryptedKey);
+      newEncryptedKeys[address.toLowerCase()] = arrayBufferToBase64(encryptedKey);
     }
+
+    // Create the updated encrypted file object
+    const updatedEncryptedFile: EncryptedFile = {
+      encryptedData: arrayBufferToBase64(newEncryptedData),
+      encryptedKeys: newEncryptedKeys,
+      iv: arrayBufferToBase64(newIv),
+      algorithm: "AES-256-GCM"
+    };
 
     // Upload the updated encrypted file
     const rpcURL = "https://1rpc.io/sepolia";

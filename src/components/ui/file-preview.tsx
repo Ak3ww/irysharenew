@@ -237,6 +237,10 @@ export function FilePreview({ file, address, onClose, onFileViewed, showSharePan
 
       const currentRecipients = existingShares?.map(share => share.recipient_address) || [];
       const allRecipients = [...new Set([...currentRecipients, resolvedNewRecipient.address.toLowerCase()])];
+      
+      console.log('Current recipients:', currentRecipients);
+      console.log('New recipients:', [resolvedNewRecipient.address.toLowerCase()]);
+      console.log('All recipients after adding:', allRecipients);
 
 
 
@@ -247,6 +251,7 @@ export function FilePreview({ file, address, onClose, onFileViewed, showSharePan
       setAddingRecipientsStage('Updating access control conditions...');
 
       // Update access control conditions without re-uploading the file
+      console.log('Updating access control for file:', file.file_url);
       const newFileUrl = await updateFileAccessControl(
         file.file_url,
         allRecipients,
@@ -301,6 +306,7 @@ export function FilePreview({ file, address, onClose, onFileViewed, showSharePan
       }, 2000);
       
     } catch (error) {
+      console.error('Error adding recipients:', error);
       alert(`Failed to add recipient: ${error instanceof Error ? error.message : 'Unknown error'}`);
       setAddingRecipients(false);
       setAddingRecipientsProgress(0);
