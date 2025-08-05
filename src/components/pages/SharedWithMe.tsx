@@ -236,6 +236,10 @@ export function SharedWithMe({ address, isConnected, usernameSaved, refreshTrigg
 
   // Preview file function
   const handlePreview = (file: FileData) => {
+    console.log('🔍 Recipient trying to preview file:', file.file_name);
+    console.log('📁 File URL being used:', file.file_url);
+    console.log('👤 Recipient address:', address);
+    
     // Mark file as viewed and update notification count immediately
     const newViewedFiles = new Set([...viewedFiles, file.id]);
     setViewedFiles(newViewedFiles);

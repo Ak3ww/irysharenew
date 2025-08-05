@@ -222,39 +222,46 @@ export async function decryptFileData(
     
     // Use the same hash-based approach for key derivation
     console.log('🔐 Deriving key from address key...');
-    const keyHash = await window.crypto.subtle.digest("SHA-256", keyBytes);
-    const derivedKey = await window.crypto.subtle.importKey(
-      "raw",
-      keyHash,
-      { name: "AES-GCM" },
-      false,
-      ["decrypt"]
-    );
-    console.log('✅ Derived key created');
-    
-    // Decrypt the AES key
-    console.log('🔓 Decrypting AES key...');
-    const rawKey = await decryptWithAES(encryptedKey, derivedKey, iv);
-    console.log('✅ AES key decrypted successfully');
-    
-    // Import the AES key
-    console.log('🔑 Importing AES key...');
-    const aesKey = await window.crypto.subtle.importKey(
-      "raw",
-      rawKey,
-      { name: "AES-GCM" },
-      false,
-      ["decrypt"]
-    );
-    console.log('✅ AES key imported');
-    
-    // Decrypt the file data
-    console.log('🔓 Decrypting file data...');
-    const encryptedData = base64ToArrayBuffer(encryptedFile.encryptedData);
-    const decryptedData = await decryptWithAES(encryptedData, aesKey, iv);
-    console.log('✅ File data decrypted successfully');
-    
-    return decryptedData;
+    try {
+      const keyHash = await window.crypto.subtle.digest("SHA-256", keyBytes);
+      const derivedKey = await window.crypto.subtle.importKey(
+        "raw",
+        keyHash,
+        { name: "AES-GCM" },
+        false,
+        ["decrypt"]
+      );
+      console.log('✅ Derived key created');
+      
+      // Decrypt the AES key
+      console.log('🔓 Decrypting AES key...');
+      const rawKey = await decryptWithAES(encryptedKey, derivedKey, iv);
+      console.log('✅ AES key decrypted successfully');
+      
+      // Import the AES key
+      console.log('🔑 Importing AES key...');
+      const aesKey = await window.crypto.subtle.importKey(
+        "raw",
+        rawKey,
+        { name: "AES-GCM" },
+        false,
+        ["decrypt"]
+      );
+      console.log('✅ AES key imported');
+      
+      // Decrypt the file data
+      console.log('🔓 Decrypting file data...');
+      const encryptedData = base64ToArrayBuffer(encryptedFile.encryptedData);
+      const decryptedData = await decryptWithAES(encryptedData, aesKey, iv);
+      console.log('✅ File data decrypted successfully');
+      
+      return decryptedData;
+    } catch (keyError) {
+      console.error('❌ Key derivation/decryption error:', keyError);
+      console.error('❌ Signature:', currentUserSignature);
+      console.error('❌ Address key:', addressKey);
+      throw keyError;
+    }
 
   } catch (error) {
     console.error('❌ Decryption error:', error);
