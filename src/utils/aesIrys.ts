@@ -228,13 +228,13 @@ export async function updateFileAccessControl(
       algorithm: encryptedFile.algorithm
     };
 
-    // Add new recipients with unique encrypted keys
+    // Add new recipients with the same shared key
     for (const address of newRecipientAddresses) {
-      console.log(`🔐 Creating unique encrypted key for address: ${address}`);
+      console.log(`🔐 Adding recipient: ${address}`);
       
-      // Use deterministic key derivation based on address only
-      const addressKey = `shared_key:${address.toLowerCase()}`;
-      const keyBytes = new TextEncoder().encode(addressKey);
+      // Use the same shared key approach
+      const sharedKey = `file_key:${address.toLowerCase()}`;
+      const keyBytes = new TextEncoder().encode(sharedKey);
       
       // Use a simple hash-based approach for key derivation
       const keyHash = await window.crypto.subtle.digest("SHA-256", keyBytes);
@@ -253,7 +253,7 @@ export async function updateFileAccessControl(
       );
       
       updatedEncryptedFile.encryptedKeys[address.toLowerCase()] = arrayBufferToBase64(encryptedKey);
-      console.log(`✅ Created unique encrypted key for ${address} using deterministic key`);
+      console.log(`✅ Added recipient: ${address} with shared key`);
     }
 
     console.log('📦 Updated encrypted file object created');

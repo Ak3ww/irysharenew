@@ -1,4 +1,4 @@
-import { ethers } from "ethers";
+
 
 // Types for our encryption system
 export interface EncryptedFile {
@@ -82,16 +82,7 @@ async function decryptWithAES(
   );
 }
 
-// Get user's wallet signature for authentication
-async function getWalletSignature(message: string): Promise<string> {
-  if (!window.ethereum) {
-    throw new Error('MetaMask not found');
-  }
-  
-  const provider = new ethers.BrowserProvider(window.ethereum);
-  const signer = await provider.getSigner();
-  return await signer.signMessage(message);
-}
+
 
 // Encrypt file data with AES-256-GCM for specific addresses
 export async function encryptFileData(
@@ -125,27 +116,29 @@ export async function encryptFileData(
       allowedAddresses.push(ownerAddress);
     }
 
-    // Encrypt the AES key uniquely for each allowed address
+    // Encrypt the AES key once with a simple shared key
     const encryptedKeys: Record<string, string> = {};
     
+    // Use a simple shared key for all addresses
+    const sharedKey = `file_key:${allowedAddresses[0].toLowerCase()}`;
+    const keyBytes = new TextEncoder().encode(sharedKey);
+    
+    // Use a simple hash-based approach for key derivation
+    const keyHash = await window.crypto.subtle.digest("SHA-256", keyBytes);
+    const derivedKey = await window.crypto.subtle.importKey(
+      "raw",
+      keyHash,
+      { name: "AES-GCM" },
+      false,
+      ["encrypt"]
+    );
+    
+    const encryptedKey = await encryptWithAES(rawKey, derivedKey, iv);
+    const sharedEncryptedKey = arrayBufferToBase64(encryptedKey);
+    
+    // Give everyone the same encrypted key
     for (const address of allowedAddresses) {
-      // Use a deterministic key derivation based on address only
-      // This ensures the same key is generated every time for the same address
-      const addressKey = `shared_key:${address.toLowerCase()}`;
-      const keyBytes = new TextEncoder().encode(addressKey);
-      
-      // Use a simple hash-based approach for key derivation
-      const keyHash = await window.crypto.subtle.digest("SHA-256", keyBytes);
-      const derivedKey = await window.crypto.subtle.importKey(
-        "raw",
-        keyHash,
-        { name: "AES-GCM" },
-        false,
-        ["encrypt"]
-      );
-      
-      const encryptedKey = await encryptWithAES(rawKey, derivedKey, iv);
-      encryptedKeys[address.toLowerCase()] = arrayBufferToBase64(encryptedKey);
+      encryptedKeys[address.toLowerCase()] = sharedEncryptedKey;
     }
 
     if (onProgress) onProgress(90);
@@ -206,8 +199,8 @@ export async function decryptFileData(
     const iv = new Uint8Array(base64ToArrayBuffer(encryptedFile.iv));
     console.log('🔢 IV extracted');
     
-    // Create the same deterministic key derivation approach used in encryption
-    const addressKey = `shared_key:${userAddressLower}`;
+    // Create the same simple shared key approach used in encryption
+    const addressKey = `file_key:${userAddressLower}`;
     console.log('🔑 Creating address key:', addressKey);
     console.log('🔍 Address key length:', addressKey.length);
     const keyBytes = new TextEncoder().encode(addressKey);
