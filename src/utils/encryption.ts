@@ -169,7 +169,7 @@ export async function encryptFileData(
 
     if (onProgress) onProgress(100);
 
-    console.log('[AES] Encryption completed for addresses:', allowedAddresses);
+    console.log('[AES] Encryption completed');
     
     return {
       encryptedFile,
@@ -188,7 +188,7 @@ export async function decryptFileData(
   userAddress: string
 ): Promise<ArrayBuffer> {
   try {
-    console.log('[AES] Starting decryption for address:', userAddress);
+    console.log('[AES] Starting decryption');
     
     const userAddressLower = userAddress.toLowerCase();
     
@@ -238,7 +238,7 @@ export async function decryptFileData(
     const encryptedData = base64ToArrayBuffer(encryptedFile.encryptedData);
     const decryptedData = await decryptWithAES(encryptedData, aesKey, iv);
     
-    console.log('[AES] Decryption completed successfully');
+    console.log('[AES] Decryption completed');
     
     return decryptedData;
 

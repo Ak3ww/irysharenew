@@ -5,7 +5,7 @@ import { supabase } from '../../utils/supabase';
 import { FileCard } from '../ui/file-card';
 import { FilePreview } from '../ui/file-preview';
 import { ShareModal } from '../ui/share-modal';
-import { downloadAndDecryptFromIrys } from '../../utils/litIrys';
+import { downloadAndDecryptFromIrys } from '../../utils/aesIrys';
 
 interface FileData {
   id: string;

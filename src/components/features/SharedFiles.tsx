@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { supabase } from '../../utils/supabase';
-import { downloadAndDecryptFromIrys } from '../../utils/litIrys';
+import { downloadAndDecryptFromIrys } from '../../utils/aesIrys';
 
 
 export function SharedFiles() {

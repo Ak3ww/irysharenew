@@ -4,7 +4,7 @@ import { Search, RefreshCw, Bell } from 'lucide-react';
 import { supabase } from '../../utils/supabase';
 import { FileCard } from '../ui/file-card';
 import { FilePreview } from '../ui/file-preview';
-import { downloadAndDecryptFromIrys } from '../../utils/litIrys';
+import { downloadAndDecryptFromIrys } from '../../utils/aesIrys';
 
 interface FileData {
   id: string;
