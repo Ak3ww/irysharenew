@@ -218,12 +218,15 @@ export async function decryptFileData(
     // Create the same unique key for this specific address
     const addressKey = `${currentUserSignature}:${userAddressLower}`;
     console.log('🔑 Creating address key:', addressKey);
+    console.log('🔍 Signature length:', currentUserSignature.length);
+    console.log('🔍 Address key length:', addressKey.length);
     const keyBytes = new TextEncoder().encode(addressKey);
     
     // Use the same hash-based approach for key derivation
     console.log('🔐 Deriving key from address key...');
     try {
       const keyHash = await window.crypto.subtle.digest("SHA-256", keyBytes);
+      console.log('🔍 Key hash length:', keyHash.byteLength);
       const derivedKey = await window.crypto.subtle.importKey(
         "raw",
         keyHash,
@@ -235,6 +238,8 @@ export async function decryptFileData(
       
       // Decrypt the AES key
       console.log('🔓 Decrypting AES key...');
+      console.log('🔍 Encrypted key length:', encryptedKey.byteLength);
+      console.log('🔍 IV length:', iv.byteLength);
       const rawKey = await decryptWithAES(encryptedKey, derivedKey, iv);
       console.log('✅ AES key decrypted successfully');
       
@@ -260,6 +265,10 @@ export async function decryptFileData(
       console.error('❌ Key derivation/decryption error:', keyError);
       console.error('❌ Signature:', currentUserSignature);
       console.error('❌ Address key:', addressKey);
+      if (keyError instanceof Error) {
+        console.error('❌ Error name:', keyError.name);
+        console.error('❌ Error message:', keyError.message);
+      }
       throw keyError;
     }
 

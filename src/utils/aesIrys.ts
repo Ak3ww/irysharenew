@@ -154,7 +154,6 @@ export async function updateFileAccessControl(
     // Download current encrypted file
     const response = await fetch(`https://gateway.irys.xyz/${transactionId}`);
     console.log('📥 Response status:', response.status);
-    console.log('📥 Response headers:', Object.fromEntries(response.headers.entries()));
     
     if (!response.ok) {
       const errorText = await response.text();
@@ -164,7 +163,6 @@ export async function updateFileAccessControl(
 
     const responseText = await response.text();
     console.log('📄 Response text length:', responseText.length);
-    console.log('📄 Response text preview:', responseText.substring(0, 200));
     
     let data;
     try {
