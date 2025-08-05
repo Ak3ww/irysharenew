@@ -129,12 +129,9 @@ export async function encryptFileData(
     const encryptedKeys: Record<string, string> = {};
     
     for (const address of allowedAddresses) {
-      // Get signature for this specific address
-      const message = `Encrypt file for sharing`;
-      const signature = await getWalletSignature(message);
-      
-      // Create a unique key for this address using their signature
-      const addressKey = `${signature}:${address.toLowerCase()}`;
+      // Use a deterministic key derivation based on address only
+      // This ensures the same key is generated every time for the same address
+      const addressKey = `shared_key:${address.toLowerCase()}`;
       const keyBytes = new TextEncoder().encode(addressKey);
       
       // Use a simple hash-based approach for key derivation
@@ -209,16 +206,9 @@ export async function decryptFileData(
     const iv = new Uint8Array(base64ToArrayBuffer(encryptedFile.iv));
     console.log('🔢 IV extracted');
     
-    // Create the same unique key derivation approach used in encryption
-    const currentUserMessage = `Encrypt file for sharing`;
-    console.log('✍️ Getting signature for message:', currentUserMessage);
-    const currentUserSignature = await getWalletSignature(currentUserMessage);
-    console.log('✅ Signature obtained');
-    
-    // Create the same unique key for this specific address
-    const addressKey = `${currentUserSignature}:${userAddressLower}`;
+    // Create the same deterministic key derivation approach used in encryption
+    const addressKey = `shared_key:${userAddressLower}`;
     console.log('🔑 Creating address key:', addressKey);
-    console.log('🔍 Signature length:', currentUserSignature.length);
     console.log('🔍 Address key length:', addressKey.length);
     const keyBytes = new TextEncoder().encode(addressKey);
     
@@ -263,7 +253,6 @@ export async function decryptFileData(
       return decryptedData;
     } catch (keyError) {
       console.error('❌ Key derivation/decryption error:', keyError);
-      console.error('❌ Signature:', currentUserSignature);
       console.error('❌ Address key:', addressKey);
       if (keyError instanceof Error) {
         console.error('❌ Error name:', keyError.name);

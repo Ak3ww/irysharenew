@@ -232,12 +232,8 @@ export async function updateFileAccessControl(
     for (const address of newRecipientAddresses) {
       console.log(`🔐 Creating unique encrypted key for address: ${address}`);
       
-      // Get signature for this specific address
-      const message = `Encrypt file for sharing`;
-      const signature = await getWalletSignature(message);
-      
-      // Create a unique key for this address using their signature
-      const addressKey = `${signature}:${address.toLowerCase()}`;
+      // Use deterministic key derivation based on address only
+      const addressKey = `shared_key:${address.toLowerCase()}`;
       const keyBytes = new TextEncoder().encode(addressKey);
       
       // Use a simple hash-based approach for key derivation
@@ -257,7 +253,7 @@ export async function updateFileAccessControl(
       );
       
       updatedEncryptedFile.encryptedKeys[address.toLowerCase()] = arrayBufferToBase64(encryptedKey);
-      console.log(`✅ Created unique encrypted key for ${address}`);
+      console.log(`✅ Created unique encrypted key for ${address} using deterministic key`);
     }
 
     console.log('📦 Updated encrypted file object created');
