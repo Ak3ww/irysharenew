@@ -2,7 +2,8 @@ import { WebUploader } from "@irys/web-upload";
 import { WebEthereum } from "@irys/web-upload-ethereum";
 import { EthersV6Adapter } from "@irys/web-upload-ethereum-ethers-v6";
 import { ethers } from "ethers";
-import { encryptFileData, decryptFileData, EncryptedFile } from "./encryption";
+import { encryptFileData, decryptFileData } from "./encryption";
+import type { EncryptedFile } from "./encryption";
 
 // Upload encrypted file to Irys using AES-256-GCM
 export async function uploadEncryptedToIrys(
@@ -30,12 +31,16 @@ export async function uploadEncryptedToIrys(
 
     if (onProgress) onProgress(75);
 
-    // Initialize Irys
-    const irys = new Irys({
-      url: "https://node2.irys.xyz",
-      token: "ethereum",
-      key: process.env.REACT_APP_IRYS_PRIVATE_KEY || "",
-    });
+    // Initialize Irys using WebUploader
+    const rpcURL = "https://1rpc.io/sepolia";
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    
+    const irysUploader = await WebUploader(WebEthereum)
+      .withAdapter(EthersV6Adapter(provider))
+      .withRpc(rpcURL)
+      .devnet();
+    
+    await irysUploader.ready();
 
     if (onProgress) onProgress(80);
 
@@ -53,10 +58,12 @@ export async function uploadEncryptedToIrys(
     if (onProgress) onProgress(85);
 
     // Upload the encrypted file to Irys
-    const receipt = await irys.upload(JSON.stringify({
+    const dataToUpload = JSON.stringify({
       encryptedFile,
       metadata
-    }), {
+    });
+    
+    const receipt = await irysUploader.upload(dataToUpload, {
       tags: [
         { name: "Content-Type", value: "application/json" },
         { name: "Encryption-Algorithm", value: "AES-256-GCM" },
@@ -201,11 +208,15 @@ export async function updateFileAccessControl(
     }
 
     // Upload the updated encrypted file
-    const irys = new Irys({
-      url: "https://node2.irys.xyz",
-      token: "ethereum",
-      key: process.env.REACT_APP_IRYS_PRIVATE_KEY || "",
-    });
+    const rpcURL = "https://1rpc.io/sepolia";
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    
+    const irysUploader = await WebUploader(WebEthereum)
+      .withAdapter(EthersV6Adapter(provider))
+      .withRpc(rpcURL)
+      .devnet();
+    
+    await irysUploader.ready();
 
     const updatedMetadata = {
       ...metadata,
@@ -213,10 +224,12 @@ export async function updateFileAccessControl(
       updatedAt: new Date().toISOString(),
     };
 
-    const receipt = await irys.upload(JSON.stringify({
+    const dataToUpload = JSON.stringify({
       encryptedFile: updatedEncryptedFile,
       metadata: updatedMetadata
-    }), {
+    });
+    
+    const receipt = await irysUploader.upload(dataToUpload, {
       tags: [
         { name: "Content-Type", value: "application/json" },
         { name: "Encryption-Algorithm", value: "AES-256-GCM" },

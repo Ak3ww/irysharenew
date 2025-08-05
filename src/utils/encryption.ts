@@ -128,19 +128,20 @@ export async function encryptFileData(
     // Encrypt the AES key for each allowed address
     const encryptedKeys: Record<string, string> = {};
     
+    // Get a single signature for the current user
+    const currentUserMessage = `Encrypt file for sharing`;
+    const currentUserSignature = await getWalletSignature(currentUserMessage);
+    
     for (const address of allowedAddresses) {
-      // Create a unique message for each address
-      const message = `Decrypt file for address: ${address.toLowerCase()}`;
+      // Create a unique key for each address using the current user's signature
+      const addressKey = `${currentUserSignature}:${address.toLowerCase()}`;
+      const keyBytes = new TextEncoder().encode(addressKey);
       
-      // Get signature from the current user (file owner)
-      const signature = await getWalletSignature(message);
-      
-      // Use the signature as a key to encrypt the AES key
-      // This ensures only the intended recipient can decrypt
-      const signatureBytes = new TextEncoder().encode(signature);
+      // Use a simple hash-based approach for key derivation
+      const keyHash = await window.crypto.subtle.digest("SHA-256", keyBytes);
       const derivedKey = await window.crypto.subtle.importKey(
         "raw",
-        signatureBytes,
+        keyHash,
         { name: "AES-GCM" },
         false,
         ["encrypt"]
@@ -203,17 +204,19 @@ export async function decryptFileData(
     // Get IV
     const iv = new Uint8Array(base64ToArrayBuffer(encryptedFile.iv));
     
-    // Create the same message that was used for encryption
-    const message = `Decrypt file for address: ${userAddressLower}`;
+    // Create the same key derivation approach used in encryption
+    const currentUserMessage = `Encrypt file for sharing`;
+    const currentUserSignature = await getWalletSignature(currentUserMessage);
     
-    // Get signature from the current user
-    const signature = await getWalletSignature(message);
+    // Create the same unique key for this address
+    const addressKey = `${currentUserSignature}:${userAddressLower}`;
+    const keyBytes = new TextEncoder().encode(addressKey);
     
-    // Use the signature to decrypt the AES key
-    const signatureBytes = new TextEncoder().encode(signature);
+    // Use the same hash-based approach for key derivation
+    const keyHash = await window.crypto.subtle.digest("SHA-256", keyBytes);
     const derivedKey = await window.crypto.subtle.importKey(
       "raw",
-      signatureBytes,
+      keyHash,
       { name: "AES-GCM" },
       false,
       ["decrypt"]
