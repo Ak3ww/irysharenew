@@ -3,48 +3,26 @@ import { Ethereum } from "@irys/upload-ethereum";
 
 // --- Automatic Approval Logic ---
 const grantUserAllowance = async (userAddress) => {
-  console.log('🔐 Starting approval for address:', userAddress);
-  
   if (!process.env.PRIVATE_KEY) {
-    console.error('❌ PRIVATE_KEY environment variable is missing');
-    throw new Error("Server is missing PRIVATE_KEY in environment variables");
+    throw new Error("Server is missing PRIVATE_KEY in .env");
   }
   
-  const amountToApproveInEth = "0.1"; // Reduced to 0.1 ETH for faster approval
-  console.log('💰 Approving user for uploads');
-  console.log('🎯 Target user address:', userAddress);
+  const amountToApproveInEth = "0.05"; // Match original working amount
   
-  try {
-    console.log('🔗 Connecting to Irys devnet...');
-    const uploader = await Uploader(Ethereum)
-      .withWallet(process.env.PRIVATE_KEY)
-      .withRpc("https://1rpc.io/sepolia")
-      .devnet();
-    
-    console.log('✅ Connected to Irys devnet');
-    
-    const amountInAtomicUnits = uploader.utils.toAtomic(amountToApproveInEth);
-    console.log('📊 Amount in atomic units:', amountInAtomicUnits.toString());
-    
-    console.log('📝 Creating approval transaction...');
-    const approvalResult = await uploader.approval.createApproval({
-      amount: amountInAtomicUnits,
-      approvedAddress: userAddress,
-    });
-    
-    console.log('📋 Approval transaction result:', approvalResult);
-    console.log(`✅ Successfully approved ${userAddress} for uploads`);
-    
-    return approvalResult;
-  } catch (error) {
-    console.error('❌ Approval failed:', error);
-    console.error('❌ Error details:', {
-      message: error.message,
-      code: error.code,
-      stack: error.stack
-    });
-    throw new Error(`Approval failed: ${error.message}`);
-  }
+  // Connect to Irys DEVNET with your developer wallet
+  const uploader = await Uploader(Ethereum)
+    .withWallet(process.env.PRIVATE_KEY)
+    .withRpc("https://1rpc.io/sepolia")
+    .devnet();
+  
+  const amountInAtomicUnits = uploader.utils.toAtomic(amountToApproveInEth);
+  
+  await uploader.approval.createApproval({
+    amount: amountInAtomicUnits,
+    approvedAddress: userAddress,
+  });
+  
+  console.log(`✅ Approved ${userAddress}`);
 };
 
 export default async function handler(req, res) {
@@ -59,45 +37,17 @@ export default async function handler(req, res) {
     return;
   }
 
-  // Only allow POST requests
-  if (req.method !== 'POST') {
-    console.error('❌ Invalid method:', req.method);
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
   try {
     const { userAddress } = req.body;
     
-    console.log('🔐 Approve-user API called with address:', userAddress);
-    console.log('🔐 Request body:', req.body);
-    
     if (!userAddress) {
-      console.error('❌ Missing userAddress in request body');
       return res.status(400).json({ error: "userAddress is required." });
     }
-
-    if (!process.env.PRIVATE_KEY) {
-      console.error('❌ PRIVATE_KEY environment variable is missing');
-      return res.status(500).json({ error: "Server configuration error: PRIVATE_KEY not found." });
-    }
     
-    console.log('✅ Starting approval process for:', userAddress);
-    const approvalResult = await grantUserAllowance(userAddress);
-    console.log('✅ Approval completed successfully');
-    
-    res.status(200).json({ 
-      success: true, 
-      message: 'User approved successfully',
-      approvalResult: approvalResult
-    });
+    await grantUserAllowance(userAddress);
+    res.status(200).json({ success: true });
   } catch (error) {
-    console.error("❌ API Error:", error);
-    console.error("❌ Error stack:", error.stack);
-    
-    res.status(500).json({ 
-      error: "Server failed to grant allowance.",
-      details: error.message,
-      timestamp: new Date().toISOString()
-    });
+    console.error("API Error:", error);
+    res.status(500).json({ error: "Server failed to grant allowance." });
   }
 } 

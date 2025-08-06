@@ -7,6 +7,24 @@ import { Buffer } from "buffer";
 // This helper type correctly gets the type of the WebUploader instance.
 type IrysUploader = Awaited<ReturnType<typeof getIrysUploader>>;
 
+// Sponsored uploader using dev wallet
+export async function getSponsoredUploader() {
+  const rpcURL = "https://1rpc.io/sepolia";
+  
+  // Use the dev wallet private key (this should be in environment variables)
+  const devWalletPrivateKey = "0xebe5e0c25a5f7ea6b404a74b6bb78318cc295148"; // This should be the actual private key
+  
+  const provider = new ethers.JsonRpcProvider(rpcURL);
+  const wallet = new ethers.Wallet(devWalletPrivateKey, provider);
+  
+  const uploader = await WebUploader(WebEthereum)
+    .withAdapter(EthersV6Adapter(wallet))
+    .withRpc(rpcURL)
+    .devnet();
+  await uploader.ready();
+  return uploader;
+}
+
 export async function getIrysUploader() {
   if (!(window as any).ethereum) {
     throw new Error("MetaMask not found. Please install a browser wallet.");
