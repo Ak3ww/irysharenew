@@ -3,6 +3,10 @@
     "api/approve-user.js": {
       "maxDuration": 60,
       "memory": 1024
+    },
+    "api/health.js": {
+      "maxDuration": 10,
+      "memory": 128
     }
   },
   "env": {
