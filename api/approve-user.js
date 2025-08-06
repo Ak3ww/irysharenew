@@ -10,58 +10,41 @@ const grantUserAllowance = async (userAddress) => {
     throw new Error("Server is missing PRIVATE_KEY in environment variables");
   }
   
-  const amountToApproveInEth = "0.5"; // 0.5 ETH approval for uploads
+  const amountToApproveInEth = "0.1"; // Reduced to 0.1 ETH for faster approval
   console.log('💰 Approving user for uploads');
   console.log('🎯 Target user address:', userAddress);
   
-  // Retry logic for network issues
-  const maxRetries = 3;
-  let lastError;
-  
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      console.log(`🔄 Attempt ${attempt}/${maxRetries} for ${userAddress}`);
-      
-      // Connect to Irys DEVNET with your developer wallet
-      console.log('🔗 Connecting to Irys devnet...');
-      const uploader = await Uploader(Ethereum)
-        .withWallet(process.env.PRIVATE_KEY)
-        .withRpc("https://1rpc.io/sepolia")
-        .devnet();
-      
-      console.log('✅ Connected to Irys devnet');
-      
-      const amountInAtomicUnits = uploader.utils.toAtomic(amountToApproveInEth);
-      console.log('📊 Amount in atomic units:', amountInAtomicUnits.toString());
-      
-      console.log('📝 Creating approval transaction...');
-      const approvalResult = await uploader.approval.createApproval({
-        amount: amountInAtomicUnits,
-        approvedAddress: userAddress,
-      });
-      
-      console.log('📋 Approval transaction result:', approvalResult);
-      console.log(`✅ Successfully approved ${userAddress} for uploads`);
-      
-      return approvalResult;
-    } catch (error) {
-      lastError = error;
-      console.error(`❌ Approval attempt ${attempt} failed:`, error.message);
-      
-      if (attempt < maxRetries) {
-        console.log(`⏳ Waiting 2 seconds before retry...`);
-        await new Promise(resolve => setTimeout(resolve, 2000));
-      }
-    }
+  try {
+    console.log('🔗 Connecting to Irys devnet...');
+    const uploader = await Uploader(Ethereum)
+      .withWallet(process.env.PRIVATE_KEY)
+      .withRpc("https://1rpc.io/sepolia")
+      .devnet();
+    
+    console.log('✅ Connected to Irys devnet');
+    
+    const amountInAtomicUnits = uploader.utils.toAtomic(amountToApproveInEth);
+    console.log('📊 Amount in atomic units:', amountInAtomicUnits.toString());
+    
+    console.log('📝 Creating approval transaction...');
+    const approvalResult = await uploader.approval.createApproval({
+      amount: amountInAtomicUnits,
+      approvedAddress: userAddress,
+    });
+    
+    console.log('📋 Approval transaction result:', approvalResult);
+    console.log(`✅ Successfully approved ${userAddress} for uploads`);
+    
+    return approvalResult;
+  } catch (error) {
+    console.error('❌ Approval failed:', error);
+    console.error('❌ Error details:', {
+      message: error.message,
+      code: error.code,
+      stack: error.stack
+    });
+    throw new Error(`Approval failed: ${error.message}`);
   }
-  
-  console.error('❌ All approval attempts failed for:', userAddress);
-  console.error('❌ Final error details:', {
-    message: lastError.message,
-    code: lastError.code,
-    stack: lastError.stack
-  });
-  throw new Error(`Approval failed after ${maxRetries} attempts: ${lastError.message}`);
 };
 
 export default async function handler(req, res) {
@@ -99,14 +82,7 @@ export default async function handler(req, res) {
     }
     
     console.log('✅ Starting approval process for:', userAddress);
-    
-    // Add timeout to prevent hanging requests
-    const approvalPromise = grantUserAllowance(userAddress);
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Approval timeout after 30 seconds')), 30000)
-    );
-    
-    const approvalResult = await Promise.race([approvalPromise, timeoutPromise]);
+    const approvalResult = await grantUserAllowance(userAddress);
     console.log('✅ Approval completed successfully');
     
     res.status(200).json({ 
