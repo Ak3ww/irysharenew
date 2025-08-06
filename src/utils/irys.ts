@@ -7,23 +7,8 @@ import { Buffer } from "buffer";
 // This helper type correctly gets the type of the WebUploader instance.
 type IrysUploader = Awaited<ReturnType<typeof getIrysUploader>>;
 
-// Sponsored uploader using dev wallet
-export async function getSponsoredUploader() {
-  const rpcURL = "https://1rpc.io/sepolia";
-  
-  // Use the dev wallet private key (this should be in environment variables)
-  const devWalletPrivateKey = "0xebe5e0c25a5f7ea6b404a74b6bb78318cc295148"; // This should be the actual private key
-  
-  const provider = new ethers.JsonRpcProvider(rpcURL);
-  const wallet = new ethers.Wallet(devWalletPrivateKey, provider);
-  
-  const uploader = await WebUploader(WebEthereum)
-    .withAdapter(EthersV6Adapter(wallet))
-    .withRpc(rpcURL)
-    .devnet();
-  await uploader.ready();
-  return uploader;
-}
+// Users are approved via /api/approve-user and then use their own wallet
+// This is the simple and secure approach - no private keys in client code
 
 export async function getIrysUploader() {
   if (!(window as any).ethereum) {
