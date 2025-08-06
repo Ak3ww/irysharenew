@@ -226,17 +226,6 @@ export async function updateFileAccessControl(
         encryptedFile, // Keep the same encrypted file
         metadata: updatedMetadata // Update metadata with new recipients
       });
-      
-      // DEBUG: Show exactly what we're uploading
-      console.log('🔍 DEBUG: What we are uploading:');
-      console.log('📁 Encrypted file size:', JSON.stringify(encryptedFile).length, 'bytes');
-      console.log('📋 Metadata size:', JSON.stringify(updatedMetadata).length, 'bytes');
-      console.log('📊 Total upload size:', dataToUpload.length, 'bytes');
-      console.log('🔄 Original file size (if known):', metadata.fileSizeBytes || 'unknown');
-      console.log('📈 Size comparison - Upload vs Original:', 
-        dataToUpload.length, 'vs', metadata.fileSizeBytes || 'unknown', 'bytes');
-      console.log('✅ CONCLUSION: We are uploading METADATA only, not the full file!');
-      
       console.log('📤 Uploading file with updated recipient list...');
       
       const receipt = await irysUploader.upload(dataToUpload, {
@@ -361,17 +350,6 @@ export async function updateFileAccessControl(
         encryptedFile: updatedEncryptedFile,
         metadata: updatedMetadata
       });
-      
-      // DEBUG: Show exactly what we're uploading for legacy files
-      console.log('🔍 DEBUG: Legacy file upload details:');
-      console.log('📁 Updated encrypted file size:', JSON.stringify(updatedEncryptedFile).length, 'bytes');
-      console.log('📋 Metadata size:', JSON.stringify(updatedMetadata).length, 'bytes');
-      console.log('📊 Total upload size:', dataToUpload.length, 'bytes');
-      console.log('🔄 Original file size (if known):', metadata.fileSizeBytes || 'unknown');
-      console.log('📈 Size comparison - Upload vs Original:', 
-        dataToUpload.length, 'vs', metadata.fileSizeBytes || 'unknown', 'bytes');
-      console.log('⚠️  LEGACY: This uploads the full encrypted file (larger than metadata-only)');
-      
       console.log('📤 Uploading updated file to Irys...');
       
       const receipt = await irysUploader.upload(dataToUpload, {
