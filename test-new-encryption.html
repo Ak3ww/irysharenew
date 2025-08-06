@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Encryption System Test</title>
+</head>
+<body>
+    <h1>New Single Key Encryption System Test</h1>
+    <div id="output"></div>
+
+    <script type="module">
+        // Test the new single key encryption system
+        async function testNewEncryption() {
+            const output = document.getElementById('output');
+            
+            try {
+                // Simulate the new encryption process
+                const testData = new TextEncoder().encode("Hello, this is a test file with the new single key system!");
+                const ownerAddress = "0x4351fD8d9A25C14556CE621ddcce35c2adeFE156";
+                const recipientAddresses = ["0x765b19f548ad6442387b585c8ffe5b18eea4a819"];
+                
+                output.innerHTML += '<p>🔐 Testing new single key encryption...</p>';
+                
+                // Simulate the encryption process
+                const aesKey = await window.crypto.subtle.generateKey(
+                    { name: "AES-GCM", length: 256 },
+                    true,
+                    ["encrypt", "decrypt"]
+                );
+                
+                const iv = window.crypto.getRandomValues(new Uint8Array(12));
+                const encryptedData = await window.crypto.subtle.encrypt(
+                    { name: "AES-GCM", iv },
+                    aesKey,
+                    testData
+                );
+                
+                const rawKey = await window.crypto.subtle.exportKey("raw", aesKey);
+                const decryptionKey = btoa(String.fromCharCode(...new Uint8Array(rawKey)));
+                
+                output.innerHTML += '<p>✅ File encrypted with single key</p>';
+                output.innerHTML += '<p>🔑 Decryption key generated: ' + decryptionKey.substring(0, 20) + '...</p>';
+                
+                // Test decryption with shared key
+                output.innerHTML += '<p>🔓 Testing decryption with shared key...</p>';
+                
+                const sharedKeyBytes = base64ToArrayBuffer(decryptionKey);
+                const sharedAesKey = await window.crypto.subtle.importKey(
+                    "raw",
+                    sharedKeyBytes,
+                    { name: "AES-GCM" },
+                    false,
+                    ["decrypt"]
+                );
+                
+                const decryptedData = await window.crypto.subtle.decrypt(
+                    { name: "AES-GCM", iv },
+                    sharedAesKey,
+                    encryptedData
+                );
+                
+                const decryptedText = new TextDecoder().decode(decryptedData);
+                output.innerHTML += '<p>✅ Decryption successful: ' + decryptedText + '</p>';
+                output.innerHTML += '<p>🎉 New single key encryption system test passed!</p>';
+                
+            } catch (error) {
+                output.innerHTML += `<p>❌ Test failed: ${error.message}</p>`;
+                console.error('Test error:', error);
+            }
+        }
+        
+        function base64ToArrayBuffer(base64) {
+            const binaryString = atob(base64);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+        
+        // Run the test
+        testNewEncryption();
+    </script>
+</body>
+</html> 

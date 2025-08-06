@@ -2,7 +2,7 @@ import { WebUploader } from "@irys/web-upload";
 import { WebEthereum } from "@irys/web-upload-ethereum";
 import { EthersV6Adapter } from "@irys/web-upload-ethereum-ethers-v6";
 import { ethers } from "ethers";
-import { encryptFileData, decryptFileData } from "./encryption";
+import { encryptFileData, decryptFileData, decryptFileDataWithKey } from "./encryption";
 import type { EncryptedFile } from "./encryption";
 
 // Upload encrypted file to Irys using AES-256-GCM
@@ -18,7 +18,7 @@ export async function uploadEncryptedToIrys(
     if (onProgress) onProgress(5);
 
     // Encrypt the file data with AES-256-GCM
-    const { encryptedFile, fileHash } = await encryptFileData(
+    const { encryptedFile, fileHash, decryptionKey } = await encryptFileData(
       fileData,
       recipientAddresses,
       (progress) => {
@@ -50,6 +50,7 @@ export async function uploadEncryptedToIrys(
       recipientAddresses: recipientAddresses.map(addr => addr.toLowerCase()),
       encryptionAlgorithm: "AES-256-GCM",
       fileHash,
+      decryptionKey, // Include the decryption key for sharing
       encryptedAt: new Date().toISOString(),
     };
 
@@ -120,14 +121,29 @@ export async function downloadAndDecryptFromIrys(
     }
 
     const { encryptedFile, metadata } = data;
-    console.log('🔐 Encrypted file keys count:', Object.keys(encryptedFile.encryptedKeys).length);
-    console.log('🔑 Available addresses:', Object.keys(encryptedFile.encryptedKeys));
+    console.log('🔐 Encrypted file version:', encryptedFile.version || 'legacy');
+    console.log('🔑 Decryption key available:', !!metadata.decryptionKey);
 
     if (onProgress) onProgress(50);
 
     // Decrypt the file data
     console.log('🔓 Starting decryption process...');
-    const decryptedData = await decryptFileData(encryptedFile, userAddress);
+    
+    // Try to decrypt using the shared key first, then fall back to address-based decryption
+    let decryptedData;
+    try {
+      if (metadata.decryptionKey) {
+        console.log('🔑 Using shared decryption key...');
+        decryptedData = await decryptFileDataWithKey(encryptedFile, metadata.decryptionKey);
+      } else {
+        console.log('🔑 Using address-based decryption...');
+        decryptedData = await decryptFileData(encryptedFile, userAddress);
+      }
+    } catch (error) {
+      console.log('🔄 Shared key failed, trying address-based decryption...');
+      decryptedData = await decryptFileData(encryptedFile, userAddress);
+    }
+    
     console.log('✅ Decryption completed successfully');
 
     if (onProgress) onProgress(100);
@@ -193,15 +209,12 @@ export async function updateFileAccessControl(
     }
     console.log('🔑 Found original encrypted key for owner');
 
-    // Decrypt the original AES key using the owner's signature
+    // Decrypt the original AES key using the owner's address-based key derivation
     const originalKeyBytes = base64ToArrayBuffer(originalEncryptedKey);
     const iv = new Uint8Array(base64ToArrayBuffer(encryptedFile.iv));
     
-    const originalMessage = `Encrypt file for sharing`;
-    const originalSignature = await getWalletSignature(originalMessage);
-    
-    // Create the same key derivation approach used in encryption
-    const addressKey = `${originalSignature}:${ownerAddress.toLowerCase()}`;
+    // Use the same address-based key derivation approach used in encryption
+    const addressKey = `file_key:${ownerAddress.toLowerCase()}`;
     const keyBytes = new TextEncoder().encode(addressKey);
     const keyHash = await window.crypto.subtle.digest("SHA-256", keyBytes);
     const derivedKey = await window.crypto.subtle.importKey(
@@ -225,18 +238,19 @@ export async function updateFileAccessControl(
       encryptedData: encryptedFile.encryptedData, // Keep same encrypted data
       encryptedKeys: { ...encryptedFile.encryptedKeys }, // Copy existing keys
       iv: encryptedFile.iv, // Keep same IV
-      algorithm: encryptedFile.algorithm
+      algorithm: encryptedFile.algorithm,
+      version: "2.0" // Update to new version
     };
 
-    // Add new recipients with the same shared key
+    // Add new recipients with individual key derivation
     for (const address of newRecipientAddresses) {
       console.log(`🔐 Adding recipient: ${address}`);
       
-      // Use the same shared key approach
-      const sharedKey = `file_key:${address.toLowerCase()}`;
-      const keyBytes = new TextEncoder().encode(sharedKey);
+      // Create a unique key derivation for each address
+      const addressKey = `file_key:${address.toLowerCase()}`;
+      const keyBytes = new TextEncoder().encode(addressKey);
       
-      // Use a simple hash-based approach for key derivation
+      // Use a hash-based approach for key derivation
       const keyHash = await window.crypto.subtle.digest("SHA-256", keyBytes);
       const derivedKey = await window.crypto.subtle.importKey(
         "raw",
@@ -253,7 +267,7 @@ export async function updateFileAccessControl(
       );
       
       updatedEncryptedFile.encryptedKeys[address.toLowerCase()] = arrayBufferToBase64(encryptedKey);
-      console.log(`✅ Added recipient: ${address} with shared key`);
+      console.log(`✅ Added recipient: ${address} with individual key`);
     }
 
     console.log('📦 Updated encrypted file object created');
@@ -303,16 +317,6 @@ export async function updateFileAccessControl(
 }
 
 // Helper functions
-async function getWalletSignature(message: string): Promise<string> {
-  if (!window.ethereum) {
-    throw new Error('MetaMask not found');
-  }
-  
-  const { ethers } = await import('ethers');
-  const provider = new ethers.BrowserProvider(window.ethereum);
-  const signer = await provider.getSigner();
-  return await signer.signMessage(message);
-}
 
 function base64ToArrayBuffer(base64: string): ArrayBuffer {
   const binaryString = atob(base64);

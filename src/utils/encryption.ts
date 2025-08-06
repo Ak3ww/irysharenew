@@ -3,14 +3,18 @@
 // Types for our encryption system
 export interface EncryptedFile {
   encryptedData: string; // Base64 encoded encrypted file data
-  encryptedKeys: Record<string, string>; // Map of address -> encrypted key
+  encryptedKey: string; // Single encrypted key for the file
   iv: string; // Initialization vector
   algorithm: string; // Always "AES-256-GCM"
+  version?: string; // Encryption version for backward compatibility
+  // Legacy support
+  encryptedKeys?: Record<string, string>; // Map of address -> encrypted key (legacy)
 }
 
 export interface EncryptionResult {
   encryptedFile: EncryptedFile;
   fileHash: string;
+  decryptionKey: string; // The actual decryption key for sharing
 }
 
 // Generate a random AES key
@@ -82,9 +86,7 @@ async function decryptWithAES(
   );
 }
 
-
-
-// Encrypt file data with AES-256-GCM for specific addresses
+// Encrypt file data with AES-256-GCM - single key approach
 export async function encryptFileData(
   fileData: ArrayBuffer,
   recipientAddresses: string[],
@@ -106,24 +108,16 @@ export async function encryptFileData(
     const encryptedData = await encryptWithAES(fileData, aesKey, iv);
     if (onProgress) onProgress(50);
 
-    // Export the AES key as raw bytes
+    // Export the AES key as raw bytes for sharing
     const rawKey = await window.crypto.subtle.exportKey("raw", aesKey);
     if (onProgress) onProgress(60);
 
-    // Create list of all addresses that should have access
-    const allowedAddresses = [...recipientAddresses];
-    if (ownerAddress) {
-      allowedAddresses.push(ownerAddress);
-    }
-
-    // Encrypt the AES key once with a simple shared key
-    const encryptedKeys: Record<string, string> = {};
+    // Create a simple encrypted key using owner's address
+    const ownerAddressLower = ownerAddress?.toLowerCase() || "owner";
+    const keyDerivationString = `file_key:${ownerAddressLower}`;
+    const keyBytes = new TextEncoder().encode(keyDerivationString);
     
-    // Use a simple shared key for all addresses
-    const sharedKey = `file_key:${allowedAddresses[0].toLowerCase()}`;
-    const keyBytes = new TextEncoder().encode(sharedKey);
-    
-    // Use a simple hash-based approach for key derivation
+    // Use a hash-based approach for key derivation
     const keyHash = await window.crypto.subtle.digest("SHA-256", keyBytes);
     const derivedKey = await window.crypto.subtle.importKey(
       "raw",
@@ -133,22 +127,19 @@ export async function encryptFileData(
       ["encrypt"]
     );
     
+    // Encrypt the AES key with the derived key
     const encryptedKey = await encryptWithAES(rawKey, derivedKey, iv);
-    const sharedEncryptedKey = arrayBufferToBase64(encryptedKey);
-    
-    // Give everyone the same encrypted key
-    for (const address of allowedAddresses) {
-      encryptedKeys[address.toLowerCase()] = sharedEncryptedKey;
-    }
+    const encryptedKeyBase64 = arrayBufferToBase64(encryptedKey);
 
     if (onProgress) onProgress(90);
 
     // Create the encrypted file object
     const encryptedFile: EncryptedFile = {
       encryptedData: arrayBufferToBase64(encryptedData),
-      encryptedKeys,
+      encryptedKey: encryptedKeyBase64,
       iv: arrayBufferToBase64(iv),
-      algorithm: "AES-256-GCM"
+      algorithm: "AES-256-GCM",
+      version: "3.0" // New version with single key approach
     };
 
     // Generate file hash for identification
@@ -157,11 +148,15 @@ export async function encryptFileData(
       .map(b => b.toString(16).padStart(2, '0'))
       .join('');
 
+    // Create the decryption key for sharing
+    const decryptionKey = arrayBufferToBase64(rawKey);
+
     if (onProgress) onProgress(100);
     
     return {
       encryptedFile,
-      fileHash: fileHashHex
+      fileHash: fileHashHex,
+      decryptionKey
     };
 
   } catch (error) {
@@ -180,18 +175,8 @@ export async function decryptFileData(
     const userAddressLower = userAddress.toLowerCase();
     console.log('🔍 User address (lowercase):', userAddressLower);
     
-    // Check if user has access to this file
-    console.log('🔑 Available encrypted keys:', Object.keys(encryptedFile.encryptedKeys));
-    if (!encryptedFile.encryptedKeys[userAddressLower]) {
-      console.error('❌ User address not found in encrypted keys');
-      console.error('❌ User address:', userAddressLower);
-      console.error('❌ Available addresses:', Object.keys(encryptedFile.encryptedKeys));
-      throw new Error(`Access denied: Address ${userAddress} not authorized to decrypt this file`);
-    }
-    console.log('✅ User has access to this file');
-
-    // Get the encrypted key for this specific user
-    const encryptedKeyBase64 = encryptedFile.encryptedKeys[userAddressLower];
+    // Get the encrypted key
+    const encryptedKeyBase64 = encryptedFile.encryptedKey;
     console.log('🔑 Found encrypted key for user');
     const encryptedKey = base64ToArrayBuffer(encryptedKeyBase64);
     
@@ -199,15 +184,56 @@ export async function decryptFileData(
     const iv = new Uint8Array(base64ToArrayBuffer(encryptedFile.iv));
     console.log('🔢 IV extracted');
     
-    // Create the same simple shared key approach used in encryption
-    const addressKey = `file_key:${userAddressLower}`;
-    console.log('🔑 Creating address key:', addressKey);
-    console.log('🔍 Address key length:', addressKey.length);
-    const keyBytes = new TextEncoder().encode(addressKey);
+    // Check if this is a legacy file (no version or version < 2.0)
+    const isLegacyFile = !encryptedFile.version || encryptedFile.version < "2.0";
+    console.log('📋 File version:', encryptedFile.version || 'legacy');
+    console.log('🔄 Is legacy file:', isLegacyFile);
     
-    // Use the same hash-based approach for key derivation
-    console.log('🔐 Deriving key from address key...');
-    try {
+    if (isLegacyFile) {
+      // Handle legacy files with the old approach
+      console.log('🔄 Using legacy decryption approach...');
+      
+      // For legacy files, we need to check if user has access
+      if (encryptedFile.encryptedKeys && encryptedFile.encryptedKeys[userAddressLower]) {
+        // Use the old individual key approach
+        const userEncryptedKey = encryptedFile.encryptedKeys[userAddressLower];
+        const userKeyBytes = new TextEncoder().encode(`file_key:${userAddressLower}`);
+        const userKeyHash = await window.crypto.subtle.digest("SHA-256", userKeyBytes);
+        const userDerivedKey = await window.crypto.subtle.importKey(
+          "raw",
+          userKeyHash,
+          { name: "AES-GCM" },
+          false,
+          ["decrypt"]
+        );
+        
+        const rawKey = await decryptWithAES(base64ToArrayBuffer(userEncryptedKey), userDerivedKey, iv);
+        const aesKey = await window.crypto.subtle.importKey(
+          "raw",
+          rawKey,
+          { name: "AES-GCM" },
+          false,
+          ["decrypt"]
+        );
+        
+        const encryptedData = base64ToArrayBuffer(encryptedFile.encryptedData);
+        const decryptedData = await decryptWithAES(encryptedData, aesKey, iv);
+        console.log('✅ Legacy decryption successful');
+        
+        return decryptedData;
+      } else {
+        throw new Error('Access denied: User not authorized for this legacy file');
+      }
+    } else {
+      // Use new individual key derivation approach for new files
+      console.log('🆕 Using new individual key derivation approach...');
+      const addressKey = `file_key:${userAddressLower}`;
+      console.log('🔑 Creating address key:', addressKey);
+      console.log('🔍 Address key length:', addressKey.length);
+      const keyBytes = new TextEncoder().encode(addressKey);
+      
+      // Use the same hash-based approach for key derivation
+      console.log('🔐 Deriving key from address key...');
       const keyHash = await window.crypto.subtle.digest("SHA-256", keyBytes);
       console.log('🔍 Key hash length:', keyHash.byteLength);
       const derivedKey = await window.crypto.subtle.importKey(
@@ -244,14 +270,6 @@ export async function decryptFileData(
       console.log('✅ File data decrypted successfully');
       
       return decryptedData;
-    } catch (keyError) {
-      console.error('❌ Key derivation/decryption error:', keyError);
-      console.error('❌ Address key:', addressKey);
-      if (keyError instanceof Error) {
-        console.error('❌ Error name:', keyError.name);
-        console.error('❌ Error message:', keyError.message);
-      }
-      throw keyError;
     }
 
   } catch (error) {
@@ -266,6 +284,12 @@ export async function checkUserAccess(
   encryptedFile: EncryptedFile,
   userAddress: string
 ): Promise<boolean> {
+  // For new files (version 3.0+), anyone with the key can decrypt
+  if (encryptedFile.version && encryptedFile.version >= "3.0") {
+    return true; // Key-based access control
+  }
+  
+  // For legacy files, check if user has an encrypted key
   const userAddressLower = userAddress.toLowerCase();
-  return Object.prototype.hasOwnProperty.call(encryptedFile.encryptedKeys, userAddressLower);
+  return !!(encryptedFile.encryptedKeys && Object.prototype.hasOwnProperty.call(encryptedFile.encryptedKeys, userAddressLower));
 } 

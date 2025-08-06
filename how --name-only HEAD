@@ -1,0 +1,10 @@
+[33mc9927d1[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m Implement simple shared key approach like physical vault key
+[33md0b138d[m Fix signature-based key derivation issue
+[33m2a9f0e2[m Add detailed debugging for signature and key derivation
+[33mffab350[m Add detailed error tracking for decryption failures
+[33m69f8b62[m Add comprehensive debugging to track decryption issues
+[33maa8dcea[m Implement proper per-user encryption with security
+[33mcee135c[m Simplify encryption to use shared key approach
+[33m7628f3d[m Add database update verification and logging to file sharing
+[33ma8ec2da[m Add comprehensive debugging and legacy file detection to updateFileAccessControl
+[33m5226df0[m Fix access control update with complete re-encryption approach

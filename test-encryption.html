@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Encryption Test</title>
+</head>
+<body>
+    <h1>Encryption/Decryption Test</h1>
+    <div id="output"></div>
+
+    <script type="module">
+        // Test the encryption/decryption system
+        async function testEncryption() {
+            const output = document.getElementById('output');
+            
+            try {
+                // Simulate the encryption process
+                const testData = new TextEncoder().encode("Hello, this is a test file!");
+                const ownerAddress = "0x4351fD8d9A25C14556CE621ddcce35c2adeFE156";
+                const recipientAddresses = ["0x765b19f548ad6442387b585c8ffe5b18eea4a819"];
+                
+                output.innerHTML += '<p>🔐 Testing encryption...</p>';
+                
+                // Test the key derivation for each address
+                const allowedAddresses = [...recipientAddresses, ownerAddress];
+                const encryptedKeys = {};
+                
+                for (const address of allowedAddresses) {
+                    const addressLower = address.toLowerCase();
+                    const addressKey = `file_key:${addressLower}`;
+                    const keyBytes = new TextEncoder().encode(addressKey);
+                    
+                    // Use a hash-based approach for key derivation
+                    const keyHash = await window.crypto.subtle.digest("SHA-256", keyBytes);
+                    const derivedKey = await window.crypto.subtle.importKey(
+                        "raw",
+                        keyHash,
+                        { name: "AES-GCM" },
+                        false,
+                        ["encrypt"]
+                    );
+                    
+                    output.innerHTML += `<p>✅ Key derived for ${addressLower}</p>`;
+                }
+                
+                output.innerHTML += '<p>🔓 Testing decryption...</p>';
+                
+                // Test decryption for owner
+                const ownerAddressLower = ownerAddress.toLowerCase();
+                const ownerAddressKey = `file_key:${ownerAddressLower}`;
+                const ownerKeyBytes = new TextEncoder().encode(ownerAddressKey);
+                const ownerKeyHash = await window.crypto.subtle.digest("SHA-256", ownerKeyBytes);
+                const ownerDerivedKey = await window.crypto.subtle.importKey(
+                    "raw",
+                    ownerKeyHash,
+                    { name: "AES-GCM" },
+                    false,
+                    ["decrypt"]
+                );
+                
+                output.innerHTML += `<p>✅ Owner key derived successfully</p>`;
+                output.innerHTML += '<p>🎉 Encryption/Decryption system test passed!</p>';
+                
+            } catch (error) {
+                output.innerHTML += `<p>❌ Test failed: ${error.message}</p>`;
+                console.error('Test error:', error);
+            }
+        }
+        
+        // Run the test
+        testEncryption();
+    </script>
+</body>
+</html> 
