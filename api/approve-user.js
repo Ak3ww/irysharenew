@@ -16,7 +16,7 @@ const grantUserAllowance = async (userAddress) => {
     throw new Error("Invalid PRIVATE_KEY format");
   }
   
-  const amountToApproveInEth = "0.5"; // Increased to 0.5 ETH for more upload capacity
+  const amountToApproveInEth = "0.5"; // 0.5 ETH approval for uploads
   console.log('💰 Approving user for uploads');
   console.log('🎯 Target user address:', userAddress);
   
@@ -29,21 +29,6 @@ const grantUserAllowance = async (userAddress) => {
       .devnet();
     
     console.log('✅ Connected to Irys devnet');
-    
-    // Check if user is already approved (optional - Irys handles duplicates gracefully)
-    try {
-      const balance = await uploader.approval.getApprovedBalance(userAddress);
-      console.log('📊 Current approved balance:', balance.toString());
-      
-      // If user already has sufficient balance, skip approval
-      const requiredAmount = uploader.utils.toAtomic(amountToApproveInEth);
-      if (balance.gte(requiredAmount)) {
-        console.log('✅ User already has sufficient approval');
-        return { alreadyApproved: true, balance: balance.toString() };
-      }
-    } catch (balanceError) {
-      console.log('📊 Could not check current balance, proceeding with approval');
-    }
     
     const amountInAtomicUnits = uploader.utils.toAtomic(amountToApproveInEth);
     console.log('📊 Amount in atomic units:', amountInAtomicUnits.toString());

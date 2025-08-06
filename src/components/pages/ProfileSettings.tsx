@@ -319,7 +319,7 @@ export function ProfileSettings({ address, isConnected, usernameSaved, onBack }:
       const { getIrysUploader } = await import('../../utils/irys');
       const irysUploader = await getIrysUploader();
       // Upload avatar to Irys
-      const avatarUrl = await uploadFile(irysUploader, file, address);
+      const avatarUrl = await uploadFile(irysUploader, file);
       setTempAvatarUrl(avatarUrl);
       setAvatarUploaded(true);
       setAvatarFile(null);

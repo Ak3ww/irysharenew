@@ -209,7 +209,7 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
           setUploadStage('Uploading to Irys...');
           // Get Irys uploader
           const irysUploader = await getIrysUploader();
-          uploadUrl = await uploadFile(irysUploader, file, address);
+          uploadUrl = await uploadFile(irysUploader, file);
         }
         setUploadProgress(50);
         setUploadStage('Saving to database...');
