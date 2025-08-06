@@ -2,7 +2,7 @@ import { WebUploader } from "@irys/web-upload";
 import { WebEthereum } from "@irys/web-upload-ethereum";
 import { EthersV6Adapter } from "@irys/web-upload-ethereum-ethers-v6";
 import { ethers } from "ethers";
-import { encryptFileData, decryptFileData, decryptFileDataWithKey } from "./encryption";
+import { encryptFileData, decryptFileData } from "./encryption";
 import type { EncryptedFile } from "./encryption";
 
 // Upload encrypted file to Irys using AES-256-GCM
@@ -129,20 +129,9 @@ export async function downloadAndDecryptFromIrys(
     // Decrypt the file data
     console.log('🔓 Starting decryption process...');
     
-    // Try to decrypt using the shared key first, then fall back to address-based decryption
-    let decryptedData;
-    try {
-      if (metadata.decryptionKey) {
-        console.log('🔑 Using shared decryption key...');
-        decryptedData = await decryptFileDataWithKey(encryptedFile, metadata.decryptionKey);
-      } else {
-        console.log('🔑 Using address-based decryption...');
-        decryptedData = await decryptFileData(encryptedFile, userAddress);
-      }
-    } catch (error) {
-      console.log('🔄 Shared key failed, trying address-based decryption...');
-      decryptedData = await decryptFileData(encryptedFile, userAddress);
-    }
+    // Decrypt using address-based decryption
+    console.log('🔑 Using address-based decryption...');
+    const decryptedData = await decryptFileData(encryptedFile, userAddress);
     
     console.log('✅ Decryption completed successfully');
 
@@ -236,10 +225,11 @@ export async function updateFileAccessControl(
     // Create updated encrypted file with new recipients
     const updatedEncryptedFile: EncryptedFile = {
       encryptedData: encryptedFile.encryptedData, // Keep same encrypted data
-      encryptedKeys: { ...encryptedFile.encryptedKeys }, // Copy existing keys
+      encryptedKey: encryptedFile.encryptedKey, // Keep the single encrypted key
       iv: encryptedFile.iv, // Keep same IV
       algorithm: encryptedFile.algorithm,
-      version: "2.0" // Update to new version
+      version: "2.0", // Update to new version
+      encryptedKeys: encryptedFile.encryptedKeys ? { ...encryptedFile.encryptedKeys } : {} // Copy existing keys if they exist
     };
 
     // Add new recipients with individual key derivation
@@ -266,7 +256,9 @@ export async function updateFileAccessControl(
         rawKey
       );
       
-      updatedEncryptedFile.encryptedKeys[address.toLowerCase()] = arrayBufferToBase64(encryptedKey);
+      if (updatedEncryptedFile.encryptedKeys) {
+        updatedEncryptedFile.encryptedKeys[address.toLowerCase()] = arrayBufferToBase64(encryptedKey);
+      }
       console.log(`✅ Added recipient: ${address} with individual key`);
     }
 
