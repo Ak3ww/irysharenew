@@ -4,9 +4,7 @@ import { Share, X, Lock, Globe, Send } from 'lucide-react';
 import { MyFiles } from './MyFiles';
 import { FileInput } from '../ui/file-input';
 import { supabase } from '../../utils/supabase';
-import { uploadFile } from '../../utils/irys';
-import { uploadEncryptedToIrys } from '../../utils/aesIrys';
-import { getIrysUploader } from '../../utils/irys';
+import { uploadFileGasless } from '../../utils/gasless-upload';
 import { useToast } from '../../hooks/use-toast';
 import { trackFileUpload, trackError, trackPageView } from '../../utils/analytics';
 interface HomepageProps {
@@ -149,36 +147,47 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
     setUploadProgress(0);
     setUploadStage('Preparing upload...');
     try {
-      let uploadUrl: string;
-      if (selectedAction === 'share') {
-        // Share files (encrypted)
-        setUploadStage('Encrypting and uploading to Irys...');
-        // Convert file to ArrayBuffer
-        const arrayBuffer = await file.arrayBuffer();
-        uploadUrl = await uploadEncryptedToIrys(
-          arrayBuffer,
-          file.name,
-          file.type,
-          address,
-          shareRecipientsValid.map(r => r.address)
-        );
-        setUploadProgress(50);
-        setUploadStage('Saving to database...');
-        // Save to database
-        const { data: fileData, error: dbError } = await supabase
-          .from('files')
-          .insert({
-            file_name: file.name,
-            file_size_bytes: file.size,
-            file_type: file.type,
-            file_url: uploadUrl,
-            owner_address: address.toLowerCase().trim(),
-            is_encrypted: true
-          })
-          .select()
-          .single();
-        if (dbError) throw dbError;
-        // Save shares
+      // Gasless upload for all file types
+      setUploadStage('Uploading via gasless system...');
+      
+      const uploadType = selectedAction === 'share' ? 'share' : (storePrivate ? 'private' : 'public');
+      const recipients = selectedAction === 'share' ? shareRecipientsValid.map(r => r.address) : [];
+      
+      const result = await uploadFileGasless({
+        file,
+        userAddress: address,
+        uploadType,
+        recipients
+      });
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Upload failed');
+      }
+      
+      const uploadUrl = result.fileUrl!;
+      setUploadProgress(50);
+      setUploadStage('Saving to database...');
+      
+      // Save to database
+      const { data: fileData, error: dbError } = await supabase
+        .from('files')
+        .insert({
+          file_name: file.name,
+          file_size_bytes: file.size,
+          file_type: file.type,
+          file_url: uploadUrl,
+          owner_address: address.toLowerCase().trim(),
+          is_encrypted: uploadType === 'private' || uploadType === 'share',
+          is_public: uploadType === 'public',
+          profile_visible: uploadType === 'public'
+        })
+        .select()
+        .single();
+      
+      if (dbError) throw dbError;
+      
+      // Save shares for share files
+      if (uploadType === 'share' && shareRecipientsValid.length > 0) {
         for (const recipient of shareRecipientsValid) {
           await supabase
             .from('file_shares')
@@ -188,61 +197,10 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
               recipient_username: recipient.username
             });
         }
-        setUploadProgress(100);
-        setUploadStage('Upload complete!');
-      } else {
-        // Store files (public or private)
-        if (storePrivate) {
-          // Private files should be encrypted
-          setUploadStage('Encrypting and uploading to Irys...');
-          // Convert file to ArrayBuffer
-          const arrayBuffer = await file.arrayBuffer();
-          uploadUrl = await uploadEncryptedToIrys(
-            arrayBuffer,
-            file.name,
-            file.type,
-            address,
-            [] // No recipients for private files
-          );
-        } else {
-          // Public files use regular upload
-          setUploadStage('Uploading to Irys...');
-          // Get Irys uploader
-          const irysUploader = await getIrysUploader();
-          uploadUrl = await uploadFile(irysUploader, file);
-        }
-        setUploadProgress(50);
-        setUploadStage('Saving to database...');
-        const { data: fileData, error: dbError } = await supabase
-          .from('files')
-          .insert({
-            file_name: file.name,
-            file_size_bytes: file.size,
-            file_type: file.type,
-            file_url: uploadUrl,
-            owner_address: address.toLowerCase().trim(),
-            is_encrypted: storePrivate, // Set based on whether file was encrypted
-            is_public: !storePrivate, // Public if not private
-            profile_visible: !storePrivate // Only visible in profile if public
-          })
-          .select()
-          .single();
-        if (dbError) throw dbError;
-        // Save shares if recipients are specified
-        if (shareRecipientsValid.length > 0) {
-          for (const recipient of shareRecipientsValid) {
-            await supabase
-              .from('file_shares')
-              .insert({
-                file_id: fileData.id,
-                recipient_address: recipient.address,
-                recipient_username: recipient.username
-              });
-          }
-        }
-        setUploadProgress(100);
-        setUploadStage('Upload complete!');
       }
+      
+      setUploadProgress(100);
+      setUploadStage('Upload complete!');
       // Storage tracking temporarily disabled to fix 406 errors
       // TODO: Re-enable when user_storage table is properly configured
       // Reset form
