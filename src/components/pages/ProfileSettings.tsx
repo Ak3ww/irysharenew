@@ -4,6 +4,7 @@ import { Save, Eye, EyeOff, User, X, Info, CheckCircle } from 'lucide-react';
 import { FileInput } from '../ui/file-input';
 import { supabase } from '../../utils/supabase';
 import { uploadFile } from '../../utils/irys';
+
 import Cropper from 'react-easy-crop';
 interface ProfileSettingsProps {
   address: string;
