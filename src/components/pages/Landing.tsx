@@ -4,11 +4,9 @@ import { useAccount } from 'wagmi';
 import { supabase } from '../../utils/supabase';
 import { ArrowRight, Shield, Zap, Globe } from 'lucide-react';
 import { trackUserRegistration, trackUserLogin, trackPageView } from '../../utils/analytics';
-
 interface LandingProps {
   onLoginSuccess: () => void;
 }
-
 export function Landing({ onLoginSuccess }: LandingProps) {
   const { address, isConnected } = useAccount();
   const [showRegister, setShowRegister] = useState(false);
@@ -18,26 +16,21 @@ export function Landing({ onLoginSuccess }: LandingProps) {
   const [checkingUser, setCheckingUser] = useState(false);
   const [animateLogo, setAnimateLogo] = useState(false);
   const [animateContent, setAnimateContent] = useState(false);
-
   // Animation triggers
   useEffect(() => {
     setAnimateLogo(true);
     setTimeout(() => setAnimateContent(true), 500);
-    
     // Track page view
     trackPageView('landing');
   }, []);
-
   // Check if user is already registered when wallet connects
   useEffect(() => {
     if (isConnected && address) {
       checkExistingUser();
     }
   }, [isConnected, address]);
-
   const checkExistingUser = async () => {
     if (!address) return;
-    
     setCheckingUser(true);
     try {
       const { data, error } = await supabase
@@ -45,16 +38,13 @@ export function Landing({ onLoginSuccess }: LandingProps) {
         .select('username')
         .eq('address', address.toLowerCase().trim())
         .single();
-
       if (error && error.code === 'PGRST116') {
         // User not found - show registration
         setShowRegister(true);
       } else if (data) {
         // User exists - login successful
-        
         // Track user login
         trackUserLogin('metamask', address);
-        
         onLoginSuccess();
       }
     } catch (error) {
@@ -64,7 +54,6 @@ export function Landing({ onLoginSuccess }: LandingProps) {
       setCheckingUser(false);
     }
   };
-
   const handleRegister = async () => {
     if (!username.trim()) {
       setUsernameError('Username is required');
@@ -74,10 +63,8 @@ export function Landing({ onLoginSuccess }: LandingProps) {
       setUsernameError('Wallet address is required');
       return;
     }
-
     setUsernameLoading(true);
     setUsernameError('');
-
     try {
       // Step 1: Check if username is taken
       const { data: existing } = await supabase
@@ -85,30 +72,24 @@ export function Landing({ onLoginSuccess }: LandingProps) {
         .select('id')
         .eq('username', username.trim())
         .single();
-
       if (existing) {
         setUsernameError('Username is already taken');
         return;
       }
-
       // Step 2: Request MetaMask signature to prove wallet ownership
       if (!(window as any).ethereum) {
         setUsernameError('MetaMask is required for registration');
         return;
       }
-
       const message = `Iryshare Registration\n\nWallet: ${address}\nUsername: ${username.trim()}\n\nSign this message to register your account.`;
-      
       const signature = await (window as any).ethereum.request({
         method: 'personal_sign',
         params: [message, address]
       });
-
       if (!signature) {
         setUsernameError('Signature required for registration');
         return;
       }
-
       // Step 3: Save username to Supabase with signature verification
       const { error } = await supabase
         .from('usernames')
@@ -117,12 +98,10 @@ export function Landing({ onLoginSuccess }: LandingProps) {
           username: username.trim(),
           registration_signature: signature
         }]);
-
       if (error) {
         setUsernameError('Error saving username');
         return;
       }
-
       // Step 4: Automatically approve user for future uploads
       try {
         const response = await fetch('/api/approve-user', {
@@ -134,7 +113,6 @@ export function Landing({ onLoginSuccess }: LandingProps) {
             userAddress: address
           })
         });
-
         if (response.ok) {
           // User automatically approved for future uploads
         } else {
@@ -144,13 +122,10 @@ export function Landing({ onLoginSuccess }: LandingProps) {
         console.warn('⚠️ Auto-approval failed:', approvalError);
         // Don't fail registration if approval fails
       }
-
       // Step 5: Update any existing file_shares for this address
       // This is handled automatically by the database trigger
-      
       // Track user registration
       trackUserRegistration('metamask', address);
-      
       onLoginSuccess();
     } catch (error) {
       console.error('Registration error:', error);
@@ -163,7 +138,6 @@ export function Landing({ onLoginSuccess }: LandingProps) {
       setUsernameLoading(false);
     }
   };
-
   if (checkingUser) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] to-[#1a1a1a] flex items-center justify-center">
@@ -176,7 +150,6 @@ export function Landing({ onLoginSuccess }: LandingProps) {
       </div>
     );
   }
-
   return (
     <div className="min-h-screen bg-[#18191a] p-4 relative">
       <div className="max-w-4xl w-full mx-auto relative z-10 py-16">
@@ -201,7 +174,6 @@ export function Landing({ onLoginSuccess }: LandingProps) {
             </p>
           </div>
         </div>
-
         {/* Features Grid - Compact */}
         <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 transition-all duration-1000 delay-500 ${animateContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
           <div className="text-center p-4 bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl hover:bg-white/10 transition-all duration-300 group">
@@ -226,7 +198,6 @@ export function Landing({ onLoginSuccess }: LandingProps) {
             </p>
           </div>
         </div>
-
         {/* Connect Wallet - Compact */}
         {!isConnected && (
           <div className={`text-center transition-all duration-1000 delay-700 ${animateContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
@@ -244,7 +215,6 @@ export function Landing({ onLoginSuccess }: LandingProps) {
             </div>
           </div>
         )}
-
         {/* Registration Modal - Full Screen Overlay */}
         {isConnected && showRegister && (
           <div 
@@ -255,7 +225,6 @@ export function Landing({ onLoginSuccess }: LandingProps) {
             <h2 className="text-2xl text-[#67FFD4] mb-6 text-center font-bold" style={{ fontFamily: 'Irys2' }}>
               Create Your Account
             </h2>
-            
             <div className="mb-4">
               <label className="text-white block mb-2 font-semibold text-sm" style={{ fontFamily: 'Irys2' }}>
                 Choose a Username
@@ -271,13 +240,11 @@ export function Landing({ onLoginSuccess }: LandingProps) {
                 autoFocus
               />
             </div>
-
             {usernameError && (
               <div className="text-red-400 mb-4 text-center animate-pulse text-sm" style={{ fontFamily: 'Irys2' }}>
                 {usernameError}
               </div>
             )}
-
             <button
               onClick={handleRegister}
               disabled={usernameLoading}
@@ -286,7 +253,6 @@ export function Landing({ onLoginSuccess }: LandingProps) {
             >
               {usernameLoading ? 'Signing with MetaMask...' : 'Create Account & Sign'}
             </button>
-
             <div className="text-center mt-4">
               <div className="text-xs text-white/70" style={{ fontFamily: 'Irys2' }}>
                 Wallet: {address?.slice(0, 6)}...{address?.slice(-4)}
@@ -298,7 +264,6 @@ export function Landing({ onLoginSuccess }: LandingProps) {
             </div>
           </div>
         )}
-
         {/* Already Connected - Compact */}
         {isConnected && !showRegister && (
           <div className={`text-center transition-all duration-1000 delay-300 ${animateContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
@@ -310,8 +275,6 @@ export function Landing({ onLoginSuccess }: LandingProps) {
             </div>
           </div>
         )}
-
-
       </div>
     </div>
   );

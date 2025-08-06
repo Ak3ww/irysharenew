@@ -5,7 +5,6 @@ import { supabase } from '../../utils/supabase';
 import { FileCard } from '../ui/file-card';
 import { FilePreview } from '../ui/file-preview';
 import { downloadAndDecryptFromIrys } from '../../utils/aesIrys';
-
 interface FileData {
   id: string;
   owner_address: string;
@@ -24,14 +23,12 @@ interface FileData {
   recipient_username?: string;
   shared_at?: string;
 }
-
 interface SharedWithMeProps {
   address: string;
   isConnected: boolean;
   usernameSaved: boolean;
   refreshTrigger?: number;
 }
-
 export function SharedWithMe({ address, isConnected, usernameSaved, refreshTrigger = 0 }: SharedWithMeProps) {
   const [sharedFiles, setSharedFiles] = useState<FileData[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -40,11 +37,9 @@ export function SharedWithMe({ address, isConnected, usernameSaved, refreshTrigg
   const [newFilesCount, setNewFilesCount] = useState(0);
   const [viewedFiles, setViewedFiles] = useState<Set<string>>(new Set());
   const [realTimeStatus, setRealTimeStatus] = useState<'connecting' | 'connected' | 'disconnected'>('disconnected');
-  
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
-  
   // Load viewed files from localStorage on mount
   useEffect(() => {
     if (address) {
@@ -59,37 +54,28 @@ export function SharedWithMe({ address, isConnected, usernameSaved, refreshTrigg
       }
     }
   }, [address]);
-
   // Save viewed files to localStorage whenever they change
   useEffect(() => {
     if (address && viewedFiles.size > 0) {
       localStorage.setItem(`viewedFiles_${address.toLowerCase()}`, JSON.stringify([...viewedFiles]));
     }
   }, [viewedFiles, address]);
-  
   // Preview state
   const [previewFile, setPreviewFile] = useState<FileData | null>(null);
-  
   // Menu state
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [selectedFile, setSelectedFile] = useState<FileData | null>(null);
-
   // Fetch shared files
   const fetchFiles = async () => {
     if (!address || !isConnected || !usernameSaved) return;
-    
     setLoading(true);
-
     const normalizedAddress = address.toLowerCase().trim();
-    
     const { data, error } = await supabase.rpc('get_user_files', { user_address: normalizedAddress });
-    
     if (error) {
       console.error('❌ Error fetching shared files:', error);
       setLoading(false);
       return;
     }
-    
     const sharedFiles = data?.filter((file: FileData) => !file.is_owned) || [];
     // Sort by newest first (using shared_at if available, otherwise created_at)
     sharedFiles.sort((a: FileData, b: FileData) => {
@@ -97,9 +83,7 @@ export function SharedWithMe({ address, isConnected, usernameSaved, refreshTrigg
       const dateB = b.shared_at ? new Date(b.shared_at) : new Date(b.created_at);
       return dateB.getTime() - dateA.getTime();
     });
-    
     setSharedFiles(sharedFiles);
-    
     // Check for new files (shared in the last 24 hours)
     const oneDayAgo = new Date();
     oneDayAgo.setDate(oneDayAgo.getDate() - 1);
@@ -108,25 +92,17 @@ export function SharedWithMe({ address, isConnected, usernameSaved, refreshTrigg
       return fileDate > oneDayAgo && !viewedFiles.has(file.id);
     });
     setNewFilesCount(newFiles.length);
-    
-    
-    
     setLoading(false);
   };
-
   // Initial fetch
   useEffect(() => {
     fetchFiles();
   }, [address, isConnected, usernameSaved, refreshTrigger, viewedFiles]);
-
   // Real-time subscription for shared files
   useEffect(() => {
     if (!address || !isConnected || !usernameSaved) return;
-
-    
     setRealTimeStatus('connecting');
     const normalizedAddress = address.toLowerCase().trim();
-
     // Subscribe to changes in the file_shares table for this user
     const sharesSubscription = supabase
       .channel('shared-files-changes')
@@ -139,20 +115,17 @@ export function SharedWithMe({ address, isConnected, usernameSaved, refreshTrigg
           filter: `recipient_address=eq.${normalizedAddress}`
         },
         (payload) => {
-  
           // Refetch files when there's a change
           fetchFiles();
         }
       )
       .subscribe((status) => {
-
         if (status === 'SUBSCRIBED') {
           setRealTimeStatus('connected');
         } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
           setRealTimeStatus('disconnected');
         }
       });
-
     // Also subscribe to changes in the files table (in case files are updated)
     const filesSubscription = supabase
       .channel('shared-files-updates')
@@ -164,40 +137,32 @@ export function SharedWithMe({ address, isConnected, usernameSaved, refreshTrigg
           table: 'files'
         },
         (payload) => {
-  
           // Refetch files when there's a change
           fetchFiles();
         }
       )
       .subscribe((status) => {
-
       });
-
     return () => {
-
       setRealTimeStatus('disconnected');
       supabase.removeChannel(sharesSubscription);
       supabase.removeChannel(filesSubscription);
     };
   }, [address, isConnected, usernameSaved]);
-
   // File type helpers
   const isImage = (file: FileData) => {
     const name = file?.file_name?.toLowerCase() || '';
     return name.endsWith('.png') || name.endsWith('.jpg') || name.endsWith('.jpeg') || 
            name.endsWith('.gif') || name.endsWith('.bmp') || name.endsWith('.webp');
   };
-
   const isPDF = (file: FileData) => {
     const name = file?.file_name?.toLowerCase() || '';
     return name.endsWith('.pdf');
   };
-
   const isVideo = (file: FileData) => {
     const name = file?.file_name?.toLowerCase() || '';
     return name.endsWith('.mp4') || name.endsWith('.webm') || name.endsWith('.mov') || name.endsWith('.avi');
   };
-
   const isAudio = (file: FileData) => {
     const name = file?.file_name?.toLowerCase() || '';
     const type = file?.file_type?.toLowerCase() || '';
@@ -205,7 +170,6 @@ export function SharedWithMe({ address, isConnected, usernameSaved, refreshTrigg
            name.endsWith('.m4a') || name.endsWith('.aac') || name.endsWith('.webm') || name.endsWith('.opus') ||
            type.startsWith('audio/');
   };
-
   // Filter files
   const filteredFiles = sharedFiles.filter((file: FileData) => {
     const matchesSearch = file.file_name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -215,35 +179,25 @@ export function SharedWithMe({ address, isConnected, usernameSaved, refreshTrigg
       (fileTypeFilter === 'videos' && isVideo(file)) ||
       (fileTypeFilter === 'audio' && isAudio(file)) ||
       (fileTypeFilter === 'encrypted' && file.is_encrypted);
-    
     return matchesSearch && matchesType;
   });
-
   // Pagination logic
   const totalPages = Math.ceil(filteredFiles.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const paginatedFiles = filteredFiles.slice(startIndex, endIndex);
-
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, fileTypeFilter, itemsPerPage]);
-
   const refreshFiles = async () => {
     await fetchFiles();
   };
-
   // Preview file function
   const handlePreview = (file: FileData) => {
-    console.log('🔍 Recipient trying to preview file:', file.file_name);
-    console.log('📁 File URL being used:', file.file_url);
-    console.log('👤 Recipient address:', address);
-    
     // Mark file as viewed and update notification count immediately
     const newViewedFiles = new Set([...viewedFiles, file.id]);
     setViewedFiles(newViewedFiles);
-    
     // Update notification count immediately
     const oneDayAgo = new Date();
     oneDayAgo.setDate(oneDayAgo.getDate() - 1);
@@ -252,27 +206,22 @@ export function SharedWithMe({ address, isConnected, usernameSaved, refreshTrigg
       return fileDate > oneDayAgo && !newViewedFiles.has(file.id);
     });
     setNewFilesCount(newFiles.length);
-    
     setPreviewFile(file);
   };
-
   const closePreview = () => {
     setPreviewFile(null);
     setShowShareMenu(false);
     setSelectedFile(null);
   };
-
   // Menu functions
   const handleMenuClick = (e: React.MouseEvent, file: FileData) => {
     e.stopPropagation();
     setSelectedFile(file);
     setShowShareMenu(!showShareMenu);
   };
-
   const handleMenuAction = (action: string, file: FileData) => {
     setShowShareMenu(false);
     setSelectedFile(null);
-    
     switch (action) {
       case 'download':
         // Direct download without preview
@@ -283,16 +232,12 @@ export function SharedWithMe({ address, isConnected, usernameSaved, refreshTrigg
         break;
     }
   };
-
   // Direct download function
   const handleDirectDownload = async (file: FileData) => {
     try {
-
-      
       let fileData: ArrayBuffer;
       const fileName = file.file_name;
       const fileType = file.file_type || 'application/octet-stream';
-      
       if (file.is_encrypted) {
         // Decrypt and download encrypted file
         const decryptedData = await downloadAndDecryptFromIrys(file.file_url, address);
@@ -305,7 +250,6 @@ export function SharedWithMe({ address, isConnected, usernameSaved, refreshTrigg
         }
         fileData = await response.arrayBuffer();
       }
-      
       // Create blob and download
       const blob = new Blob([fileData], { type: fileType });
       const url = URL.createObjectURL(blob);
@@ -315,17 +259,12 @@ export function SharedWithMe({ address, isConnected, usernameSaved, refreshTrigg
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
       // Clean up
       URL.revokeObjectURL(url);
-
           } catch (error) {
         alert(`Download failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
   };
-
-
-
   // ESC key handler for closing preview
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -333,13 +272,11 @@ export function SharedWithMe({ address, isConnected, usernameSaved, refreshTrigg
         closePreview();
       }
     };
-
     if (previewFile) {
       document.addEventListener('keydown', handleEsc);
       return () => document.removeEventListener('keydown', handleEsc);
     }
   }, [previewFile]);
-
   // Click outside handler for closing menu
   useEffect(() => {
     const handleClickOutside = () => {
@@ -348,13 +285,11 @@ export function SharedWithMe({ address, isConnected, usernameSaved, refreshTrigg
         setSelectedFile(null);
       }
     };
-
     if (showShareMenu) {
       document.addEventListener('click', handleClickOutside);
       return () => document.removeEventListener('click', handleClickOutside);
     }
   }, [showShareMenu]);
-
   if (!isConnected || !usernameSaved) {
     return (
       <div className="min-h-screen bg-[#18191a] p-6">
@@ -366,7 +301,6 @@ export function SharedWithMe({ address, isConnected, usernameSaved, refreshTrigg
       </div>
     );
   }
-
   return (
     <div className="min-h-screen bg-[#18191a] p-6">
       <div className="max-w-7xl mx-auto">
@@ -412,7 +346,6 @@ export function SharedWithMe({ address, isConnected, usernameSaved, refreshTrigg
             </Button>
           </div>
         </div>
-
         {/* Search and Filter */}
         <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 mb-6">
           <div className="flex flex-col lg:flex-row gap-4">
@@ -449,7 +382,6 @@ export function SharedWithMe({ address, isConnected, usernameSaved, refreshTrigg
             </div>
           </div>
         </div>
-
         {/* Pagination Controls */}
         {filteredFiles.length > 0 && (
           <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 mb-6">
@@ -480,7 +412,6 @@ export function SharedWithMe({ address, isConnected, usernameSaved, refreshTrigg
                   <span className="text-white/60 text-sm">per page</span>
                 </div>
               </div>
-              
               {/* Page Navigation */}
               {totalPages > 1 && (
                 <div className="flex items-center gap-2">
@@ -493,7 +424,6 @@ export function SharedWithMe({ address, isConnected, usernameSaved, refreshTrigg
                   >
                     Previous
                   </Button>
-                  
                   <div className="flex items-center gap-1">
                     {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                       let pageNum;
@@ -506,7 +436,6 @@ export function SharedWithMe({ address, isConnected, usernameSaved, refreshTrigg
                       } else {
                         pageNum = currentPage - 2 + i;
                       }
-                      
                       return (
                         <Button
                           key={pageNum}
@@ -524,7 +453,6 @@ export function SharedWithMe({ address, isConnected, usernameSaved, refreshTrigg
                       );
                     })}
                   </div>
-                  
                   <Button
                     variant="outline"
                     size="sm"
@@ -539,7 +467,6 @@ export function SharedWithMe({ address, isConnected, usernameSaved, refreshTrigg
             </div>
           </div>
         )}
-
         {/* Files Grid */}
         {loading ? (
           <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-12 text-center">
@@ -560,7 +487,6 @@ export function SharedWithMe({ address, isConnected, usernameSaved, refreshTrigg
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {paginatedFiles.map(file => {
               const isNew = new Date(file.shared_at || file.created_at) > new Date(Date.now() - 24 * 60 * 60 * 1000) && !viewedFiles.has(file.id);
-              
               return (
                 <FileCard
                   key={file.id}
@@ -573,9 +499,6 @@ export function SharedWithMe({ address, isConnected, usernameSaved, refreshTrigg
             })}
           </div>
         )}
-
-
-
         {/* Unified File Preview */}
         <FilePreview
           file={previewFile}
@@ -586,7 +509,6 @@ export function SharedWithMe({ address, isConnected, usernameSaved, refreshTrigg
             const newViewedFiles = new Set(viewedFiles);
             newViewedFiles.add(fileId);
             setViewedFiles(newViewedFiles);
-            
             // Update localStorage
             localStorage.setItem(`viewedFiles_${address.toLowerCase()}`, JSON.stringify(Array.from(newViewedFiles)));
           }}

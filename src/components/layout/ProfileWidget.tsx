@@ -3,14 +3,12 @@ import { X } from 'lucide-react';
 import { supabase } from '../../utils/supabase';
 import { useBalance, useAccount, useDisconnect } from 'wagmi';
 import { useToast } from '../../hooks/use-toast';
-
 interface ProfileWidgetProps {
   address: string;
   isConnected: boolean;
   usernameSaved: boolean;
   isMobile?: boolean;
 }
-
 interface UserStats {
   totalFiles: number;
   usedStorage: number;
@@ -18,12 +16,10 @@ interface UserStats {
   username: string;
   profileAvatar: string;
 }
-
 export function ProfileWidget({ address, isConnected, usernameSaved, isMobile = false }: ProfileWidgetProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [stats, setStats] = useState<UserStats | null>(null);
   const { toast } = useToast();
-  
   // Copy to clipboard function
   const copyToClipboard = async (text: string) => {
     try {
@@ -42,24 +38,19 @@ export function ProfileWidget({ address, isConnected, usernameSaved, isMobile = 
       });
     }
   };
-
   // Wagmi hooks for Irys network
   const { address: wagmiAddress } = useAccount();
   const { disconnect } = useDisconnect();
-  
   // Get Irys balance
   const { data: irysBalance, isLoading: balanceLoading } = useBalance({
     address: wagmiAddress as `0x${string}`,
   });
-
   // Fetch user stats
   useEffect(() => {
     if (!address || !isConnected || !usernameSaved) return;
-
     const fetchStats = async () => {
       try {
         const normalizedAddress = address.toLowerCase().trim();
-
         // Fetch user profile and storage info
         const [profileResult, storageResult, filesResult] = await Promise.all([
           supabase
@@ -77,13 +68,11 @@ export function ProfileWidget({ address, isConnected, usernameSaved, isMobile = 
             .select('id', { count: 'exact' })
             .eq('owner_address', normalizedAddress)
         ]);
-
         const username = profileResult.data?.username || 'Unknown';
         const profileAvatar = profileResult.data?.profile_avatar || '';
         const usedBytes = storageResult.data?.used_bytes || 0;
         const totalFiles = filesResult.count || 0;
         const totalStorage = 12 * 1024 * 1024 * 1024; // 12GB
-
         setStats({
           username,
           profileAvatar,
@@ -95,15 +84,12 @@ export function ProfileWidget({ address, isConnected, usernameSaved, isMobile = 
         console.error('Error fetching user stats:', error);
       }
     };
-
     fetchStats();
   }, [address, isConnected, usernameSaved]);
-
   // Don't render if not connected or no username
   if (!isConnected || !usernameSaved) {
     return null;
   }
-
   const storagePercentage = stats ? (stats.usedStorage / stats.totalStorage) * 100 : 0;
   const formatBytes = (bytes: number) => {
     if (bytes === 0) return '0 B';
@@ -112,7 +98,6 @@ export function ProfileWidget({ address, isConnected, usernameSaved, isMobile = 
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
-
   // Format Irys balance
   const formatIrysBalance = (balance: bigint | undefined) => {
     if (!balance) return '0 IRYS';
@@ -122,12 +107,10 @@ export function ProfileWidget({ address, isConnected, usernameSaved, isMobile = 
     }
     return `${irysAmount.toFixed(4)} IRYS`;
   };
-
   // Positioning based on layout - moved to top navigation bar
   const containerClasses = isMobile 
     ? "fixed top-0 left-0 right-0 z-[9999] bg-black/20 backdrop-blur-sm border-b border-white/5" 
     : "w-full bg-transparent";
-
   return (
     <div className={containerClasses}>
       <div className="flex items-center justify-between px-4 py-2">
@@ -145,7 +128,6 @@ export function ProfileWidget({ address, isConnected, usernameSaved, isMobile = 
               <X size={16} />
             </button>
           </div>
-          
           <div className="space-y-4">
             {/* Username */}
             <div className="flex items-center justify-between">
@@ -158,7 +140,6 @@ export function ProfileWidget({ address, isConnected, usernameSaved, isMobile = 
                 @{stats.username}
               </button>
             </div>
-            
             {/* Wallet Address */}
             <div className="flex items-center justify-between">
               <span className="text-white/60 text-sm">Wallet</span>
@@ -170,7 +151,6 @@ export function ProfileWidget({ address, isConnected, usernameSaved, isMobile = 
                 {address.slice(0, 6)}...{address.slice(-4)}
               </button>
             </div>
-            
             {/* Irys Balance */}
             <div className="flex items-center justify-between">
               <span className="text-white/60 text-sm">Irys Balance</span>
@@ -187,13 +167,11 @@ export function ProfileWidget({ address, isConnected, usernameSaved, isMobile = 
                 </div>
               </div>
             </div>
-            
             {/* Total Files */}
             <div className="flex items-center justify-between">
               <span className="text-white/60 text-sm">Total Files</span>
               <span className="text-white font-medium">{stats.totalFiles}</span>
             </div>
-            
             {/* Free Upload Credit */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
@@ -210,7 +188,6 @@ export function ProfileWidget({ address, isConnected, usernameSaved, isMobile = 
                 <span className="text-white/40 text-xs">{formatBytes(stats.totalStorage)} total</span>
               </div>
             </div>
-            
             {/* Disconnect Button */}
             <div className="pt-4 border-t border-white/10">
               <button
@@ -226,7 +203,6 @@ export function ProfileWidget({ address, isConnected, usernameSaved, isMobile = 
           </div>
         </div>
       )}
-
       {/* Profile Button */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}

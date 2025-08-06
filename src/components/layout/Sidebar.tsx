@@ -3,8 +3,6 @@ import { ChevronRight, Home, Folder, Users, Settings, Search, Send } from 'lucid
 import { DisconnectButton } from '../ui/disconnect-button';
 import { supabase } from '../../utils/supabase';
 import { ProfileSearch } from '../ui/profile-search';
-
-
 interface SidebarItemProps {
   icon: React.ReactNode;
   label: string;
@@ -12,7 +10,6 @@ interface SidebarItemProps {
   onClick?: () => void;
   notificationCount?: number;
 }
-
 const SidebarItem = ({ icon, label, isActive = false, onClick, notificationCount }: SidebarItemProps) => (
   <button 
     className={`w-full flex items-center gap-3 p-3 rounded-md transition-colors relative ${
@@ -31,7 +28,6 @@ const SidebarItem = ({ icon, label, isActive = false, onClick, notificationCount
     <span className="text-sm font-medium flex-1 text-left" style={{ fontFamily: 'Irys1', letterSpacing: '0.1em' }}>{label}</span>
   </button>
 );
-
 interface SidebarProps {
   activePage: string;
   onPageChange: (page: string) => void;
@@ -39,20 +35,16 @@ interface SidebarProps {
   isCollapsed?: boolean;
   onToggleCollapse?: (collapsed: boolean) => void;
 }
-
 export function Sidebar({ activePage, onPageChange, address, isCollapsed = false, onToggleCollapse }: SidebarProps) {
   const [newSharedFilesCount, setNewSharedFilesCount] = useState(0);
   const [showProfileSearch, setShowProfileSearch] = useState(false);
-
   // Fetch new shared files count
   useEffect(() => {
     if (!address) return;
-    
     const fetchNewSharedFiles = async () => {
       try {
         const { data } = await supabase.rpc('get_user_files', { user_address: address.toLowerCase().trim() });
         const sharedFiles = data?.filter((file: { is_owned: boolean }) => !file.is_owned) || [];
-        
         // Get viewed files from localStorage
         const storedViewedFiles = localStorage.getItem(`viewedFiles_${address.toLowerCase()}`);
         let viewedFiles = new Set<string>();
@@ -64,7 +56,6 @@ export function Sidebar({ activePage, onPageChange, address, isCollapsed = false
             console.error('Error parsing viewed files from localStorage:', error);
           }
         }
-        
         // Count files shared in the last 24 hours that haven't been viewed
         const oneDayAgo = new Date();
         oneDayAgo.setDate(oneDayAgo.getDate() - 1);
@@ -72,25 +63,16 @@ export function Sidebar({ activePage, onPageChange, address, isCollapsed = false
           const fileDate = file.shared_at ? new Date(file.shared_at) : new Date(file.created_at);
           return fileDate > oneDayAgo && !viewedFiles.has(file.id);
         });
-        
         setNewSharedFilesCount(newFiles.length);
       } catch (error) {
         console.error('Error fetching new shared files:', error);
       }
     };
-
     fetchNewSharedFiles();
-    
     // Set up interval to check for localStorage changes (for real-time updates)
     const interval = setInterval(fetchNewSharedFiles, 2000); // Check every 2 seconds
-    
     return () => clearInterval(interval);
   }, [address]);
-
-
-
-  
-
            // Bottom toolbar for collapsed state (PC/tablet and mobile)
     if (isCollapsed) {
       return (
@@ -106,7 +88,6 @@ export function Sidebar({ activePage, onPageChange, address, isCollapsed = false
           >
             <Home size={20} />
           </button>
-          
           <button
             onClick={() => onPageChange('myfiles')}
             className={`p-3 rounded-md transition-colors touch-manipulation ${
@@ -116,7 +97,6 @@ export function Sidebar({ activePage, onPageChange, address, isCollapsed = false
           >
             <Folder size={20} />
           </button>
-          
           <button
             onClick={() => onPageChange('shared')}
             className={`p-3 rounded-md transition-colors relative touch-manipulation ${
@@ -131,7 +111,6 @@ export function Sidebar({ activePage, onPageChange, address, isCollapsed = false
               </div>
             )}
           </button>
-          
                       <button
               onClick={() => onPageChange('sendtokens')}
               className="p-3 rounded-md transition-colors text-gray-300 hover:bg-gray-800 hover:text-white touch-manipulation"
@@ -139,7 +118,6 @@ export function Sidebar({ activePage, onPageChange, address, isCollapsed = false
             >
               <Send size={20} />
             </button>
-
           <button
             onClick={() => onPageChange('profile')}
             className={`p-3 rounded-md transition-colors touch-manipulation ${
@@ -149,7 +127,6 @@ export function Sidebar({ activePage, onPageChange, address, isCollapsed = false
           >
             <Settings size={20} />
           </button>
-
           {/* Search button */}
           <button
             onClick={() => setShowProfileSearch(true)}
@@ -158,7 +135,6 @@ export function Sidebar({ activePage, onPageChange, address, isCollapsed = false
           >
             <Search size={20} />
           </button>
-
           {/* Unfold button */}
           <button
             onClick={() => onToggleCollapse?.(false)}
@@ -167,25 +143,19 @@ export function Sidebar({ activePage, onPageChange, address, isCollapsed = false
           >
             <ChevronRight size={20} className="rotate-90" />
           </button>
-
           {/* Disconnect button */}
           <DisconnectButton variant="icon-only" />
         </div>
       </div>
-      
       {/* Profile Search Modal */}
       <ProfileSearch 
         isOpen={showProfileSearch}
         onClose={() => setShowProfileSearch(false)}
         currentAddress={address}
       />
-
     </>
   );
   }
-
-
-
      // Full sidebar
    return (
            <div 
@@ -208,7 +178,6 @@ export function Sidebar({ activePage, onPageChange, address, isCollapsed = false
           <ChevronRight size={20} />
         </button>
       </div>
-
       <div className="py-2 px-3 flex flex-col gap-1 flex-1">
         {/* Search Bar */}
         <div className="mb-4">
@@ -220,7 +189,6 @@ export function Sidebar({ activePage, onPageChange, address, isCollapsed = false
             <span className="text-sm font-medium flex-1 text-left">Search Profiles</span>
           </button>
         </div>
-
         <SidebarItem 
           icon={<Home size={20} />} 
           label="HOME" 
@@ -252,26 +220,19 @@ export function Sidebar({ activePage, onPageChange, address, isCollapsed = false
           isActive={activePage === 'profile'}
           onClick={() => onPageChange('profile')}
         />
-        
-
       </div>
-
-
-
       {/* Disconnect Button */}
       <div className="p-4 border-t border-gray-800">
         <div className="px-2">
           <DisconnectButton />
         </div>
       </div>
-      
       {/* Profile Search Modal */}
       <ProfileSearch 
         isOpen={showProfileSearch}
         onClose={() => setShowProfileSearch(false)}
         currentAddress={address}
       />
-
     </div>
   );
 } 

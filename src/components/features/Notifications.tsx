@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { supabase } from '../../utils/supabase';
-
 export function Notifications() {
   const { address, isConnected } = useAccount();
-  
   // Notification states
   const [hasNewSharedFiles, setHasNewSharedFiles] = useState(false);
   const [lastSharedFilesCount, setLastSharedFilesCount] = useState(0);
@@ -13,42 +11,34 @@ export function Notifications() {
   const [hasNewComments, setHasNewComments] = useState(false);
   const [totalNotifications, setTotalNotifications] = useState(0);
   const [sharedWithMe, setSharedWithMe] = useState<any[]>([]);
-
   // Fetch shared files for notifications
   useEffect(() => {
     if (!address) return;
-    
     const fetchSharedFiles = async () => {
       try {
         const { data, error } = await supabase.rpc('get_user_shared_files', { 
           user_address: address.toLowerCase().trim() 
         });
-        
         if (error) {
           console.error('Error fetching shared files:', error);
           return;
         }
-        
         const newFiles = data || [];
         setSharedWithMe(newFiles);
-        
         // Check if we have new shared files
         if (newFiles.length > lastSharedFilesCount) {
           setHasNewSharedFiles(true);
           // Store details of new files
           const newFilesDetails = newFiles.slice(0, newFiles.length - lastSharedFilesCount);
           setNewSharedFilesDetails(newFilesDetails);
-          console.log('New shared files detected! Notification shown.', newFilesDetails.length, 'new files');
         }
         setLastSharedFilesCount(newFiles.length);
       } catch (error) {
         console.error('Error in shared files fetch:', error);
       }
     };
-    
     fetchSharedFiles();
   }, [address, lastSharedFilesCount]);
-
   // File type helpers
   function isImage(file: any) {
     const name = file?.file_name?.toLowerCase() || '';
@@ -58,14 +48,12 @@ export function Notifications() {
       contentType.startsWith('image/')
     );
   }
-
   function isPDF(file: any) {
     const name = file?.file_name?.toLowerCase() || '';
     const contentType = getTagValue(Array.isArray(file.tags) ? file.tags : [], 'Content-Type');
     return name.endsWith('.pdf') || name.endsWith('.txt') || name.endsWith('.doc') || name.endsWith('.docx') || 
            contentType === 'application/pdf' || contentType === 'text/plain' || contentType.startsWith('application/vnd.openxmlformats');
   }
-
   function isVideo(file: any) {
     const name = file?.file_name?.toLowerCase() || '';
     const contentType = getTagValue(Array.isArray(file.tags) ? file.tags : [], 'Content-Type');
@@ -74,7 +62,6 @@ export function Notifications() {
       contentType.startsWith('video/')
     );
   }
-
   function isAudio(file: any) {
     const name = file?.file_name?.toLowerCase() || '';
     const contentType = getTagValue(Array.isArray(file.tags) ? file.tags : [], 'Content-Type');
@@ -83,20 +70,16 @@ export function Notifications() {
       contentType.startsWith('audio/')
     );
   }
-
   function getTagValue(tags: any, tagName: string) {
     if (!Array.isArray(tags)) return '';
     const tag = tags.find((t: any) => t.name === tagName);
     return tag ? tag.value : '';
   }
-
   const handleNotificationClick = () => {
     // Clear the notification count but keep the notification visible
     setNewSharedFilesDetails([]);
     setTotalNotifications(0);
-    console.log('Notification clicked - cleared count');
   };
-
   return (
     <div className="flex-1 bg-black">
       <div className="max-w-7xl mx-auto py-6 px-4">
@@ -104,11 +87,9 @@ export function Notifications() {
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl text-white" style={{ fontFamily: 'Irys2' }}>NOTIFICATIONS</h1>
         </div>
-
         {/* Notifications Section */}
         <div className="bg-[#111] border border-[#67FFD4] rounded-lg p-6">
           <h2 className="text-2xl text-white mb-6" style={{ fontFamily: 'Irys2' }}>ALL NOTIFICATIONS</h2>
-          
           {/* Notification Status */}
           <div className="mb-6 p-4 bg-[#222] rounded-lg">
             <div className="flex items-center justify-between">
@@ -127,7 +108,6 @@ export function Notifications() {
               )}
             </div>
           </div>
-
           {/* Shared Files Notifications */}
           {hasNewSharedFiles && newSharedFilesDetails.length > 0 && (
             <div className="mb-6">
@@ -170,7 +150,6 @@ export function Notifications() {
               </button>
             </div>
           )}
-
           {/* Future: Likes Notifications */}
           {hasNewLikes && (
             <div className="mb-6">
@@ -194,7 +173,6 @@ export function Notifications() {
               </div>
             </div>
           )}
-
           {/* Future: Comments Notifications */}
           {hasNewComments && (
             <div className="mb-6">
@@ -218,7 +196,6 @@ export function Notifications() {
               </div>
             </div>
           )}
-
           {/* No Notifications */}
           {!hasNewSharedFiles && !hasNewLikes && !hasNewComments && (
             <div className="text-center py-12">

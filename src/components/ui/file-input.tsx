@@ -1,6 +1,5 @@
 import React, { forwardRef } from 'react';
 import { Upload, X, FileText, Image, File } from 'lucide-react';
-
 interface FileInputProps {
   onChange: (file: File | null) => void;
   accept?: string;
@@ -13,7 +12,6 @@ interface FileInputProps {
   className?: string;
   variant?: 'default' | 'profile' | 'upload';
 }
-
 export const FileInput = forwardRef<HTMLInputElement, FileInputProps>(
   ({ 
     onChange, 
@@ -27,10 +25,8 @@ export const FileInput = forwardRef<HTMLInputElement, FileInputProps>(
     className = "",
     variant = "default"
   }, ref) => {
-    
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0] || null;
-      
       if (file) {
         // Check file size if maxSize is specified
         if (maxSize && file.size > maxSize) {
@@ -38,13 +34,11 @@ export const FileInput = forwardRef<HTMLInputElement, FileInputProps>(
           alert(`File must be smaller than ${maxSizeMB}MB`);
           return;
         }
-        
         onChange(file);
       } else {
         onChange(null);
       }
     };
-
     const handleClear = () => {
       if (onClear) {
         onClear();
@@ -56,10 +50,8 @@ export const FileInput = forwardRef<HTMLInputElement, FileInputProps>(
         ref.current.value = '';
       }
     };
-
     const getFileIcon = () => {
       if (!selectedFile) return <Upload size={20} />;
-      
       const fileName = selectedFile.name.toLowerCase();
       if (fileName.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/)) {
         return <Image size={20} />;
@@ -69,7 +61,6 @@ export const FileInput = forwardRef<HTMLInputElement, FileInputProps>(
         return <File size={20} />;
       }
     };
-
     const formatFileSize = (bytes: number) => {
       if (bytes === 0) return '0 B';
       const k = 1024;
@@ -77,7 +68,6 @@ export const FileInput = forwardRef<HTMLInputElement, FileInputProps>(
       const i = Math.floor(Math.log(bytes) / Math.log(k));
       return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     };
-
     return (
       <div className={`space-y-3 ${className}`}>
         {/* Custom File Input Container */}
@@ -101,7 +91,6 @@ export const FileInput = forwardRef<HTMLInputElement, FileInputProps>(
               zIndex: 10
             }}
           />
-          
           {/* Custom styled file input */}
           <div className={`
             relative w-full min-h-[60px] bg-white/5 border border-white/10 rounded-lg 
@@ -125,7 +114,6 @@ export const FileInput = forwardRef<HTMLInputElement, FileInputProps>(
                   )}
                 </div>
               </div>
-              
               {selectedFile && !disabled && !loading && (
                 <button
                   type="button"
@@ -138,11 +126,9 @@ export const FileInput = forwardRef<HTMLInputElement, FileInputProps>(
               )}
             </div>
           </div>
-          
           {/* Focus ring */}
           <div className="absolute inset-0 rounded-lg ring-2 ring-transparent transition-all duration-200 pointer-events-none group-focus-within:ring-[#67FFD4]/50"></div>
         </div>
-
         {/* File size validation info */}
         {selectedFile && maxSize && (
           <div className="flex items-center justify-between text-xs">
@@ -156,7 +142,6 @@ export const FileInput = forwardRef<HTMLInputElement, FileInputProps>(
             </span>
           </div>
         )}
-
         {/* Loading State */}
         {loading && (
           <div className="flex items-center gap-2 text-[#67FFD4] text-sm">
@@ -168,5 +153,4 @@ export const FileInput = forwardRef<HTMLInputElement, FileInputProps>(
     );
   }
 );
-
 FileInput.displayName = 'FileInput'; 

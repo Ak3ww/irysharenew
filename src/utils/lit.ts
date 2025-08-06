@@ -2,22 +2,17 @@ import { LitNodeClient } from "@lit-protocol/lit-node-client";
 import type { AuthSig } from "@lit-protocol/types";
 import { ethers } from "ethers";
 import { SiweMessage } from "siwe";
-
 // Lit Protocol client instance
 let litClient: LitNodeClient | null = null;
-
 // Initialize Lit Protocol client
 export async function getLitClient(): Promise<LitNodeClient> {
   if (litClient) return litClient;
-
   litClient = new LitNodeClient({
     litNetwork: "datil-dev", // Using datil-dev for free usage
   });
-
   await litClient.connect();
   return litClient;
 }
-
 // Access control conditions for file sharing
 export function getAccessControlConditions(
   recipientAddresses: string[] = [],
@@ -27,7 +22,6 @@ export function getAccessControlConditions(
   if (ownerAddress) allowedAddresses.push(ownerAddress);
   // Keep addresses in their original format (checksummed) for consistency
   const normalizedAddresses = allowedAddresses.map(addr => addr);
-
   if (normalizedAddresses.length === 0) {
     // If no addresses, allow any wallet (private to self)
     const cond = [{
@@ -41,10 +35,8 @@ export function getAccessControlConditions(
         value: "000000000000000000",
       },
     }];
-    console.log('[Lit] accessControlConditions (private):', cond);
     return cond;
   }
-
   // For shared files, use a single condition that requires the user to have a balance
   // Note: This is a temporary solution. In production, you would need to implement
   // proper address-specific access control using custom contracts or different Lit patterns
@@ -59,10 +51,8 @@ export function getAccessControlConditions(
       value: "000000000000000000",
     },
   }];
-  console.log('[Lit] accessControlConditions (shared):', cond);
   return cond;
 }
-
 // Get authentication signature for Lit Protocol using SIWE (Sign-In With Ethereum)
 export async function getAuthSig(wallet: ethers.Signer): Promise<AuthSig> {
   const address = await wallet.getAddress(); // Keep original checksummed format
@@ -86,7 +76,6 @@ export async function getAuthSig(wallet: ethers.Signer): Promise<AuthSig> {
   });
   const messageToSign = siweMessage.prepareMessage();
   const signature = await wallet.signMessage(messageToSign);
-  console.log('[Lit] SIWE/authSig address:', address.toLowerCase());
   return {
     sig: signature,
     derivedVia: "web3.eth.personal.sign",
@@ -94,7 +83,6 @@ export async function getAuthSig(wallet: ethers.Signer): Promise<AuthSig> {
     address: address.toLowerCase(), // Return lowercase for Lit Protocol
   };
 }
-
 // REAL LIT PROTOCOL ENCRYPTION
 export async function encryptFileData(
   fileData: ArrayBuffer,
@@ -118,8 +106,6 @@ export async function encryptFileData(
     const authSig = await getAuthSig(signer);
     // Create access control conditions
     const accessControlConditions = getAccessControlConditions(recipientAddresses, ownerAddress);
-    console.log('[Lit] ENCRYPT wallet address:', (await signer.getAddress()).toLowerCase());
-    console.log('[Lit] ENCRYPT accessControlConditions:', accessControlConditions);
     if (onProgress) onProgress(50);
     // Convert ArrayBuffer to Uint8Array
     const uint8Array = new Uint8Array(fileData);
@@ -133,7 +119,6 @@ export async function encryptFileData(
       chain: "ethereum",
     });
     if (onProgress) onProgress(100);
-    console.log('✅ REAL Lit Protocol encryption completed');
     return {
       ciphertext,
       dataToEncryptHash,
@@ -144,7 +129,6 @@ export async function encryptFileData(
     throw new Error(`Encryption failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
-
 // REAL LIT PROTOCOL DECRYPTION
 export async function decryptFileData(
   ciphertext: string,
@@ -165,20 +149,6 @@ export async function decryptFileData(
     // Get auth signature
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const authSig = await getAuthSig(signer);
-    console.log('[Lit] DECRYPT wallet address:', address);
-    console.log('[Lit] DECRYPT accessControlConditions:', accessControlConditions);
-    
-    // Log the exact addresses in the access control conditions
-    console.log('[Lit] DECRYPT checking addresses in conditions:');
-    accessControlConditions.forEach((condition, index) => {
-      if (typeof condition === 'object' && condition !== null && 'returnValueTest' in condition) {
-        const typedCondition = condition as any;
-        if (typedCondition.returnValueTest && typedCondition.returnValueTest.value) {
-          console.log(`[Lit] DECRYPT condition ${index} address:`, typedCondition.returnValueTest.value);
-        }
-      }
-    });
-    
     // REAL LIT PROTOCOL DECRYPTION
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const decryptedData = await (client as any).decrypt({
@@ -188,7 +158,6 @@ export async function decryptFileData(
       authSig,
       chain: "ethereum",
     });
-    console.log('✅ REAL Lit Protocol decryption completed');
     // ... rest of your decryption type handling ...
     if (typeof decryptedData === 'string') {
       const encoder = new TextEncoder();
@@ -228,12 +197,10 @@ export async function decryptFileData(
     throw new Error(`Decryption failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
-
 // Update access control conditions for existing files (real Lit Protocol)
 export async function updateAccessControlConditions(recipientAddresses: string[] = [], ownerAddress?: string): Promise<object[]> {
   return getAccessControlConditions(recipientAddresses, ownerAddress);
 }
-
 // Check if a user has access to decrypt a file
 export async function checkUserAccess(
   accessControlConditions: object[]
@@ -244,12 +211,10 @@ export async function checkUserAccess(
     if (!window.ethereum) {
       return false;
     }
-
     const provider = new ethers.BrowserProvider(window.ethereum);
     const signer = await provider.getSigner();
     const userAddress = await signer.getAddress();
     const userAddressLower = userAddress.toLowerCase();
-
     return accessControlConditions.some((condition) => {
       const typedCondition = condition as Record<string, unknown>;
       if (typedCondition.parameters && Array.isArray(typedCondition.parameters) && typedCondition.parameters[0]) {

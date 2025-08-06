@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react';
 import { Search, User, Users, Eye, EyeOff, FileText, Calendar, X } from 'lucide-react';
 import { supabase } from '../../utils/supabase';
 import { useNavigate } from 'react-router-dom';
-
 interface ProfileData {
   username: string;
   address: string;
@@ -13,13 +12,11 @@ interface ProfileData {
   updated_at?: string;
   public_file_count?: number;
 }
-
 interface ProfileSearchProps {
   isOpen: boolean;
   onClose: () => void;
   currentAddress?: string;
 }
-
 export function ProfileSearch({ isOpen, onClose, currentAddress }: ProfileSearchProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<ProfileData[]>([]);
@@ -27,7 +24,6 @@ export function ProfileSearch({ isOpen, onClose, currentAddress }: ProfileSearch
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const searchTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const navigate = useNavigate();
-
   // Load recent searches from localStorage
   useEffect(() => {
     const stored = localStorage.getItem('recentProfileSearches');
@@ -39,38 +35,32 @@ export function ProfileSearch({ isOpen, onClose, currentAddress }: ProfileSearch
       }
     }
   }, []);
-
   // Save recent searches to localStorage
   const saveRecentSearch = (username: string) => {
     const updated = [username, ...recentSearches.filter(s => s !== username)].slice(0, 5);
     setRecentSearches(updated);
     localStorage.setItem('recentProfileSearches', JSON.stringify(updated));
   };
-
   // Search profiles with debouncing
   useEffect(() => {
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
-
     if (!searchQuery.trim()) {
       setSearchResults([]);
       setIsSearching(false);
       return;
     }
-
     setIsSearching(true);
     searchTimeoutRef.current = setTimeout(async () => {
       try {
         const query = searchQuery.trim().toLowerCase();
-        
         // Search by username (partial match)
         const { data, error } = await supabase
           .from('usernames')
           .select('*')
           .ilike('username', `%${query}%`)
           .limit(10);
-
         if (error) {
           console.error('Search error:', error);
           setSearchResults([]);
@@ -85,7 +75,6 @@ export function ProfileSearch({ isOpen, onClose, currentAddress }: ProfileSearch
               // Then by username length (shorter = more relevant)
               return a.username.length - b.username.length;
             });
-          
           setSearchResults(filtered);
         }
       } catch (error) {
@@ -95,14 +84,12 @@ export function ProfileSearch({ isOpen, onClose, currentAddress }: ProfileSearch
         setIsSearching(false);
       }
     }, 300);
-
     return () => {
       if (searchTimeoutRef.current) {
         clearTimeout(searchTimeoutRef.current);
       }
     };
   }, [searchQuery, currentAddress]);
-
   // Handle profile click
   const handleProfileClick = (username: string) => {
     saveRecentSearch(username);
@@ -110,12 +97,10 @@ export function ProfileSearch({ isOpen, onClose, currentAddress }: ProfileSearch
     onClose();
     setSearchQuery('');
   };
-
   // Handle recent search click
   const handleRecentSearchClick = (username: string) => {
     setSearchQuery(username);
   };
-
   // ESC key handler
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -123,22 +108,18 @@ export function ProfileSearch({ isOpen, onClose, currentAddress }: ProfileSearch
         onClose();
       }
     };
-
     if (isOpen) {
       document.addEventListener('keydown', handleEsc);
       return () => document.removeEventListener('keydown', handleEsc);
     }
   }, [isOpen, onClose]);
-
   // Click outside handler
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
       onClose();
     }
   };
-
   if (!isOpen) return null;
-
   return (
     <div 
       className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-[9999] p-4"
@@ -159,7 +140,6 @@ export function ProfileSearch({ isOpen, onClose, currentAddress }: ProfileSearch
             <X size={20} />
           </button>
         </div>
-
         {/* Search Input */}
         <div className="relative mb-6">
           <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white/40" size={20} />
@@ -177,7 +157,6 @@ export function ProfileSearch({ isOpen, onClose, currentAddress }: ProfileSearch
             </div>
           )}
         </div>
-
         {/* Search Results */}
         {searchQuery.trim() && (
           <div className="space-y-2 max-h-96 overflow-y-auto">
@@ -192,7 +171,6 @@ export function ProfileSearch({ isOpen, onClose, currentAddress }: ProfileSearch
                   <div className="w-12 h-12 bg-gradient-to-br from-[#67FFD4] to-[#00B4D8] rounded-full flex items-center justify-center text-black font-bold text-lg">
                     {profile.username.charAt(0).toUpperCase()}
                   </div>
-                  
                   {/* Profile Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
@@ -203,11 +181,9 @@ export function ProfileSearch({ isOpen, onClose, currentAddress }: ProfileSearch
                         <Eye size={14} className="text-emerald-400" />
                       )}
                     </div>
-                    
                     {profile.profile_bio && (
                       <p className="text-white/60 text-sm truncate">{profile.profile_bio}</p>
                     )}
-                    
                     <div className="flex items-center gap-4 mt-2 text-white/40 text-xs">
                       <div className="flex items-center gap-1">
                         <FileText size={12} />
@@ -219,7 +195,6 @@ export function ProfileSearch({ isOpen, onClose, currentAddress }: ProfileSearch
                       </div>
                     </div>
                   </div>
-                  
                   {/* Action */}
                   <div className="text-white/40 hover:text-[#67FFD4] transition-colors">
                     <Users size={16} />
@@ -240,7 +215,6 @@ export function ProfileSearch({ isOpen, onClose, currentAddress }: ProfileSearch
             )}
           </div>
         )}
-
         {/* Recent Searches */}
         {!searchQuery.trim() && recentSearches.length > 0 && (
           <div className="space-y-2">
@@ -257,7 +231,6 @@ export function ProfileSearch({ isOpen, onClose, currentAddress }: ProfileSearch
             ))}
           </div>
         )}
-
         {/* Empty State */}
         {!searchQuery.trim() && recentSearches.length === 0 && (
           <div className="text-center text-white/60 py-8">

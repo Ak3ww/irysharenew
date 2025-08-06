@@ -2,7 +2,7 @@ import { WebUploader } from "@irys/web-upload";
 import { WebEthereum } from "@irys/web-upload-ethereum";
 import { EthersV6Adapter } from "@irys/web-upload-ethereum-ethers-v6";
 import { ethers } from "ethers";
-import { encryptFileData, decryptFileData } from "./encryption";
+import { encryptFileData, decryptFileData, decryptFileDataWithSharedKey } from "./encryption";
 import type { EncryptedFile } from "./encryption";
 
 // Upload encrypted file to Irys using AES-256-GCM
@@ -89,15 +89,10 @@ export async function downloadAndDecryptFromIrys(
   onProgress?: (progress: number) => void
 ): Promise<ArrayBuffer> {
   try {
-    console.log('📥 Starting download for transaction:', transactionId);
-    console.log('👤 User address:', userAddress);
-    
     if (onProgress) onProgress(10);
 
     // Download the encrypted file from Irys
     const response = await fetch(`https://gateway.irys.xyz/${transactionId}`);
-    console.log('📥 Response status:', response.status);
-    console.log('📥 Response headers:', Object.fromEntries(response.headers.entries()));
     
     if (!response.ok) {
       console.error('❌ Download failed:', response.statusText);
@@ -108,12 +103,11 @@ export async function downloadAndDecryptFromIrys(
 
     // Check if response is JSON (AES format) or HTML (old Lit format)
     const contentType = response.headers.get('content-type');
-    console.log('📄 Content-Type:', contentType);
     let data;
     
     try {
       data = await response.json();
-      console.log('✅ Successfully parsed JSON response');
+
     } catch (jsonError) {
       console.error('❌ JSON parse error:', jsonError);
       // If JSON parsing fails, it might be an old Lit Protocol file
@@ -121,17 +115,31 @@ export async function downloadAndDecryptFromIrys(
     }
 
     const { encryptedFile, metadata } = data;
-    console.log('🔐 Encrypted file version:', encryptedFile.version || 'legacy');
-    console.log('🔑 Decryption key available:', !!metadata.decryptionKey);
+
 
     if (onProgress) onProgress(50);
 
     // Decrypt the file data
-    console.log('🔓 Starting decryption process...');
+
     
-    // Decrypt using address-based decryption
-    console.log('🔑 Using address-based decryption...');
-    const decryptedData = await decryptFileData(encryptedFile, userAddress);
+    let decryptedData: ArrayBuffer;
+    
+    // Try to use the shared decryption key first (for shared files)
+    if (metadata.decryptionKey) {
+      console.log('🔑 Using shared decryption key for shared file...');
+      try {
+        decryptedData = await decryptFileDataWithSharedKey(encryptedFile, metadata.decryptionKey);
+        console.log('✅ Shared key decryption successful');
+      } catch (error) {
+        console.log('⚠️ Shared key decryption failed, trying address-based decryption...');
+        console.error('Shared key error:', error);
+        decryptedData = await decryptFileData(encryptedFile, userAddress);
+      }
+    } else {
+      // Fall back to address-based decryption (for private files)
+      console.log('🔑 Using address-based decryption for private file...');
+      decryptedData = await decryptFileData(encryptedFile, userAddress);
+    }
     
     console.log('✅ Decryption completed successfully');
 
@@ -145,7 +153,7 @@ export async function downloadAndDecryptFromIrys(
   }
 }
 
-// Update file access control (add/remove recipients)
+// Update file access control (add/remove recipients) for AES-256-GCM files
 export async function updateFileAccessControl(
   transactionId: string,
   newRecipientAddresses: string[],
@@ -186,121 +194,178 @@ export async function updateFileAccessControl(
     
     const { encryptedFile, metadata } = data;
     console.log('✅ Successfully parsed encrypted file data');
-    console.log('🔐 Encrypted keys count:', Object.keys(encryptedFile.encryptedKeys).length);
-    console.log('🔑 Available addresses:', Object.keys(encryptedFile.encryptedKeys));
-
-    // Get the original AES key by decrypting it with the owner's signature
-    const originalEncryptedKey = encryptedFile.encryptedKeys[ownerAddress.toLowerCase()];
-    if (!originalEncryptedKey) {
-      console.error('❌ Owner address not found in encrypted keys:', ownerAddress.toLowerCase());
-      console.error('❌ Available addresses:', Object.keys(encryptedFile.encryptedKeys));
-      throw new Error('Cannot find original AES key for owner');
-    }
-    console.log('🔑 Found original encrypted key for owner');
-
-    // Decrypt the original AES key using the owner's address-based key derivation
-    const originalKeyBytes = base64ToArrayBuffer(originalEncryptedKey);
-    const iv = new Uint8Array(base64ToArrayBuffer(encryptedFile.iv));
+    console.log('🔐 File version:', encryptedFile.version || 'legacy');
     
-    // Use the same address-based key derivation approach used in encryption
-    const addressKey = `file_key:${ownerAddress.toLowerCase()}`;
-    const keyBytes = new TextEncoder().encode(addressKey);
-    const keyHash = await window.crypto.subtle.digest("SHA-256", keyBytes);
-    const derivedKey = await window.crypto.subtle.importKey(
-      "raw",
-      keyHash,
-      { name: "AES-GCM" },
-      false,
-      ["decrypt"]
-    );
-    
-    // Decrypt the original AES key
-    const rawKey = await window.crypto.subtle.decrypt(
-      { name: "AES-GCM", iv },
-      derivedKey,
-      originalKeyBytes
-    );
-    console.log('✅ Original AES key decrypted successfully');
-
-    // Create updated encrypted file with new recipients
-    const updatedEncryptedFile: EncryptedFile = {
-      encryptedData: encryptedFile.encryptedData, // Keep same encrypted data
-      encryptedKey: encryptedFile.encryptedKey, // Keep the single encrypted key
-      iv: encryptedFile.iv, // Keep same IV
-      algorithm: encryptedFile.algorithm,
-      version: "2.0", // Update to new version
-      encryptedKeys: encryptedFile.encryptedKeys ? { ...encryptedFile.encryptedKeys } : {} // Copy existing keys if they exist
-    };
-
-    // Add new recipients with individual key derivation
-    for (const address of newRecipientAddresses) {
-      console.log(`🔐 Adding recipient: ${address}`);
+    // Check if this is a new AES file (version 3.0+) with shared key
+    if (encryptedFile.version && encryptedFile.version >= "3.0") {
+      console.log('🆕 Handling version 3.0+ file with shared key approach...');
       
-      // Create a unique key derivation for each address
-      const addressKey = `file_key:${address.toLowerCase()}`;
+      // For version 3.0+, we simply update the metadata with new recipients
+      // The shared key approach means all recipients use the same decryptionKey
+      console.log('🔑 Using shared key approach - no re-encryption needed');
+      
+      const updatedMetadata = {
+        ...metadata,
+        recipientAddresses: [...new Set([...(metadata.recipientAddresses || []), ...newRecipientAddresses.map(addr => addr.toLowerCase())])],
+        updatedAt: new Date().toISOString(),
+      };
+
+      // Upload the file with updated metadata (same encrypted file, updated recipient list)
+      const rpcURL = "https://1rpc.io/sepolia";
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      
+      const irysUploader = await WebUploader(WebEthereum)
+        .withAdapter(EthersV6Adapter(provider))
+        .withRpc(rpcURL)
+        .devnet();
+      
+      await irysUploader.ready();
+      console.log('🚀 Irys uploader ready');
+
+      const dataToUpload = JSON.stringify({
+        encryptedFile, // Keep the same encrypted file
+        metadata: updatedMetadata // Update metadata with new recipients
+      });
+      console.log('📤 Uploading file with updated recipient list...');
+      
+      const receipt = await irysUploader.upload(dataToUpload, {
+        tags: [
+          { name: "Content-Type", value: "application/json" },
+          { name: "Encryption-Algorithm", value: "AES-256-GCM" },
+          { name: "Owner-Address", value: ownerAddress.toLowerCase() },
+          { name: "File-Name", value: metadata.fileName },
+          { name: "File-Type", value: metadata.fileType },
+          { name: "Updated", value: "true" },
+        ]
+      });
+
+      console.log('✅ File updated successfully with new recipient list, ID:', receipt.id);
+      return receipt.id;
+      
+    } else {
+      // Handle legacy files (version < 3.0) with individual keys
+      console.log('🔄 Handling legacy file with individual key approach...');
+      
+      if (!encryptedFile.encryptedKeys || typeof encryptedFile.encryptedKeys !== 'object') {
+        throw new Error('Legacy file format: encryptedKeys not found or invalid');
+      }
+      
+      console.log('🔐 Encrypted keys count:', Object.keys(encryptedFile.encryptedKeys).length);
+      console.log('🔑 Available addresses:', Object.keys(encryptedFile.encryptedKeys));
+
+      // Get the original AES key by decrypting it with the owner's signature
+      const originalEncryptedKey = encryptedFile.encryptedKeys[ownerAddress.toLowerCase()];
+      if (!originalEncryptedKey) {
+        console.error('❌ Owner address not found in encrypted keys:', ownerAddress.toLowerCase());
+        console.error('❌ Available addresses:', Object.keys(encryptedFile.encryptedKeys));
+        throw new Error('Cannot find original AES key for owner');
+      }
+      console.log('🔑 Found original encrypted key for owner');
+
+      // Decrypt the original AES key using the owner's address-based key derivation
+      const originalKeyBytes = base64ToArrayBuffer(originalEncryptedKey);
+      const iv = new Uint8Array(base64ToArrayBuffer(encryptedFile.iv));
+      
+      // Use the same address-based key derivation approach used in encryption
+      const addressKey = `file_key:${ownerAddress.toLowerCase()}`;
       const keyBytes = new TextEncoder().encode(addressKey);
-      
-      // Use a hash-based approach for key derivation
       const keyHash = await window.crypto.subtle.digest("SHA-256", keyBytes);
       const derivedKey = await window.crypto.subtle.importKey(
         "raw",
         keyHash,
         { name: "AES-GCM" },
         false,
-        ["encrypt"]
+        ["decrypt"]
       );
       
-      const encryptedKey = await window.crypto.subtle.encrypt(
+      // Decrypt the original AES key
+      const rawKey = await window.crypto.subtle.decrypt(
         { name: "AES-GCM", iv },
         derivedKey,
-        rawKey
+        originalKeyBytes
       );
-      
-      if (updatedEncryptedFile.encryptedKeys) {
-        updatedEncryptedFile.encryptedKeys[address.toLowerCase()] = arrayBufferToBase64(encryptedKey);
+      console.log('✅ Original AES key decrypted successfully');
+
+      // Create updated encrypted file with new recipients
+      const updatedEncryptedFile: EncryptedFile = {
+        encryptedData: encryptedFile.encryptedData,
+        encryptedKey: encryptedFile.encryptedKey,
+        iv: encryptedFile.iv,
+        algorithm: encryptedFile.algorithm,
+        version: encryptedFile.version || "2.0",
+        encryptedKeys: { ...encryptedFile.encryptedKeys }
+      };
+
+      // Add new recipients with individual key derivation
+      for (const address of newRecipientAddresses) {
+        console.log(`🔐 Adding recipient: ${address}`);
+        
+        // Create a unique key derivation for each address
+        const addressKey = `file_key:${address.toLowerCase()}`;
+        const keyBytes = new TextEncoder().encode(addressKey);
+        
+        // Use a hash-based approach for key derivation
+        const keyHash = await window.crypto.subtle.digest("SHA-256", keyBytes);
+        const derivedKey = await window.crypto.subtle.importKey(
+          "raw",
+          keyHash,
+          { name: "AES-GCM" },
+          false,
+          ["encrypt"]
+        );
+        
+        const encryptedKey = await window.crypto.subtle.encrypt(
+          { name: "AES-GCM", iv },
+          derivedKey,
+          rawKey
+        );
+        
+        if (updatedEncryptedFile.encryptedKeys) {
+          updatedEncryptedFile.encryptedKeys[address.toLowerCase()] = arrayBufferToBase64(encryptedKey);
+        }
+        console.log(`✅ Added recipient: ${address} with individual key`);
       }
-      console.log(`✅ Added recipient: ${address} with individual key`);
+
+      console.log('📦 Updated encrypted file object created');
+
+      // Upload the updated encrypted file
+      const rpcURL = "https://1rpc.io/sepolia";
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      
+      const irysUploader = await WebUploader(WebEthereum)
+        .withAdapter(EthersV6Adapter(provider))
+        .withRpc(rpcURL)
+        .devnet();
+      
+      await irysUploader.ready();
+      console.log('🚀 Irys uploader ready');
+
+      const updatedMetadata = {
+        ...metadata,
+        recipientAddresses: [...new Set([...(metadata.recipientAddresses || []), ...newRecipientAddresses.map(addr => addr.toLowerCase())])],
+        updatedAt: new Date().toISOString(),
+      };
+
+      const dataToUpload = JSON.stringify({
+        encryptedFile: updatedEncryptedFile,
+        metadata: updatedMetadata
+      });
+      console.log('📤 Uploading updated file to Irys...');
+      
+      const receipt = await irysUploader.upload(dataToUpload, {
+        tags: [
+          { name: "Content-Type", value: "application/json" },
+          { name: "Encryption-Algorithm", value: "AES-256-GCM" },
+          { name: "Owner-Address", value: ownerAddress.toLowerCase() },
+          { name: "File-Name", value: metadata.fileName },
+          { name: "File-Type", value: metadata.fileType },
+          { name: "Updated", value: "true" },
+        ]
+      });
+
+      console.log('✅ Legacy file updated successfully with ID:', receipt.id);
+      return receipt.id;
     }
-
-    console.log('📦 Updated encrypted file object created');
-
-    // Upload the updated encrypted file
-    const rpcURL = "https://1rpc.io/sepolia";
-    const provider = new ethers.BrowserProvider(window.ethereum);
-    
-    const irysUploader = await WebUploader(WebEthereum)
-      .withAdapter(EthersV6Adapter(provider))
-      .withRpc(rpcURL)
-      .devnet();
-    
-    await irysUploader.ready();
-    console.log('🚀 Irys uploader ready');
-
-    const updatedMetadata = {
-      ...metadata,
-      recipientAddresses: [...(metadata.recipientAddresses || []), ...newRecipientAddresses.map(addr => addr.toLowerCase())],
-      updatedAt: new Date().toISOString(),
-    };
-
-    const dataToUpload = JSON.stringify({
-      encryptedFile: updatedEncryptedFile,
-      metadata: updatedMetadata
-    });
-    console.log('📤 Uploading updated file to Irys...');
-    
-    const receipt = await irysUploader.upload(dataToUpload, {
-      tags: [
-        { name: "Content-Type", value: "application/json" },
-        { name: "Encryption-Algorithm", value: "AES-256-GCM" },
-        { name: "Owner-Address", value: ownerAddress.toLowerCase() },
-        { name: "File-Name", value: metadata.fileName },
-        { name: "File-Type", value: metadata.fileType },
-        { name: "Updated", value: "true" },
-      ]
-    });
-
-    console.log('✅ File uploaded successfully with ID:', receipt.id);
-    return receipt.id;
 
   } catch (error) {
     console.error('❌ Update access control error:', error);

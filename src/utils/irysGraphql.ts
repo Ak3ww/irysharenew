@@ -1,7 +1,5 @@
 // iryshare/src/utils/irysGraphql.ts
-
 const IRYS_GRAPHQL_ENDPOINT = "https://uploader.irys.xyz/graphql";
-
 export type IrysTag = { name: string; values: string[] };
 export type IrysQueryOptions = {
   owners?: string[];
@@ -11,18 +9,15 @@ export type IrysQueryOptions = {
   order?: "ASC" | "DESC";
   after?: string;
 };
-
 export type IrysTransactionNode = {
   id: string;
   address: string;
   timestamp: number;
   tags: { name: string; value: string }[];
 };
-
 export type IrysQueryResult = {
   edges: { node: IrysTransactionNode; cursor: string }[];
 };
-
 export async function queryIrysTransactions(options: IrysQueryOptions): Promise<IrysQueryResult> {
   // Build GraphQL query string
   const query = `
@@ -50,7 +45,6 @@ export async function queryIrysTransactions(options: IrysQueryOptions): Promise<
   };
   // Remove undefined
   Object.keys(variables).forEach((k) => variables[k] === undefined && delete variables[k]);
-
   const res = await fetch(IRYS_GRAPHQL_ENDPOINT, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -61,7 +55,6 @@ export async function queryIrysTransactions(options: IrysQueryOptions): Promise<
   if (json.errors) throw new Error(json.errors[0]?.message || "Irys GraphQL error");
   return json.data.transactions;
 }
-
 export async function getIrysTransactionById(id: string) {
   const query = `
     query GetTx($ids: [String!]) {

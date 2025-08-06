@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
-
 import { useAccount } from 'wagmi';
 import { supabase } from './utils/supabase';
 import { Landing } from './components/pages/Landing';
@@ -13,12 +12,9 @@ import { SendTokens } from './components/pages/SendTokens';
 import { Sidebar } from './components/layout/Sidebar';
 import { MobileNav } from './components/layout/MobileNav';
 import { AnalyticsDashboard } from './components/admin/AnalyticsDashboard';
-
 import { BackToTop } from './components/ui/back-to-top';
 import { ProfileWidget } from './components/layout/ProfileWidget';
-
 import { Toaster } from './components/ui/toaster';
-
 function AppContent() {
   const { address, isConnected } = useAccount();
   const [usernameSaved, setUsernameSaved] = useState(false);
@@ -28,18 +24,15 @@ function AppContent() {
   const [isMobile, setIsMobile] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  
   // Check if mobile
   useEffect(() => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768);
     };
-    
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
-  
   // Determine active page from location
   const getActivePage = () => {
     const path = location.pathname;
@@ -48,13 +41,10 @@ function AppContent() {
     if (path === '/shared') return 'shared';
     if (path === '/sendtokens') return 'sendtokens';
     if (path === '/profile') return 'profile';
-
     if (path.startsWith('/profile/')) return 'profile';
     return 'home';
   };
-  
   const activePage = getActivePage();
-  
   const setActivePage = (page: string) => {
     switch (page) {
       case 'home':
@@ -72,12 +62,8 @@ function AppContent() {
       case 'profile':
         navigate('/profile');
         break;
-
     }
   };
-
-
-
   // Check if user has a username when wallet connects
   useEffect(() => {
     if (!address || !isConnected) {
@@ -85,7 +71,6 @@ function AppContent() {
       setCheckingUser(false);
       return;
     }
-
     const checkUsername = async () => {
       setCheckingUser(true);
       try {
@@ -94,7 +79,6 @@ function AppContent() {
           .select('username')
           .eq('address', address.toLowerCase().trim())
           .single();
-
         if (error && error.code === 'PGRST116') {
           setUsernameSaved(false);
         } else if (data) {
@@ -107,19 +91,15 @@ function AppContent() {
         setCheckingUser(false);
       }
     };
-
     checkUsername();
   }, [address, isConnected]);
-
   const handleLoginSuccess = () => {
     setUsernameSaved(true);
   };
-
   const handleFileUpload = () => {
     // Trigger refresh of file lists
     setRefreshTrigger(prev => prev + 1);
   };
-
   // Show loading while checking user
   if (checkingUser) {
     return (
@@ -133,12 +113,10 @@ function AppContent() {
       </div>
     );
   }
-
   // Show landing page if not connected or no username
   if (!isConnected || !usernameSaved) {
     return <Landing onLoginSuccess={handleLoginSuccess} />;
   }
-
   // Mobile Layout
   if (isMobile) {
     return (
@@ -155,7 +133,6 @@ function AppContent() {
                 refreshTrigger={refreshTrigger}
               />
             } />
-            
             <Route path="/myfiles" element={
               <div className="p-4">
                 <MyFiles 
@@ -166,7 +143,6 @@ function AppContent() {
                 />
               </div>
             } />
-            
             <Route path="/shared" element={
               <div className="p-4">
                 <SharedWithMe 
@@ -177,13 +153,11 @@ function AppContent() {
                 />
               </div>
             } />
-            
             <Route path="/sendtokens" element={
               <SendTokens 
                 onBack={() => setActivePage('home')}
               />
             } />
-            
             <Route path="/profile" element={
               <div className="p-4">
                 <ProfileSettings 
@@ -193,21 +167,17 @@ function AppContent() {
                 />
               </div>
             } />
-            
             <Route path="/profile/:username" element={<div className="p-4"><Profile /></div>} />
           </Routes>
         </div>
-        
         {/* Mobile Bottom Navigation */}
         <MobileNav 
           activePage={activePage} 
           onPageChange={setActivePage} 
           address={address}
         />
-        
         {/* Back to Top Button */}
         <BackToTop />
-        
         {/* Floating Profile Widget - mobile version */}
         <ProfileWidget 
           address={address || ''} 
@@ -218,7 +188,6 @@ function AppContent() {
       </div>
     );
   }
-
   // Desktop Layout
   return (
     <div className="min-h-screen bg-black flex">
@@ -229,7 +198,6 @@ function AppContent() {
         isCollapsed={sidebarCollapsed}
         onToggleCollapse={setSidebarCollapsed}
       />
-      
       <div className={`flex-1 flex flex-col transition-all duration-300 ${sidebarCollapsed ? 'ml-0 pb-20' : 'ml-[280px] md:ml-[280px]'}`}>
         <div className="flex-1 overflow-auto pt-16">
           <Routes>
@@ -243,7 +211,6 @@ function AppContent() {
                 onPageChange={setActivePage}
               />
             } />
-            
             <Route path="/myfiles" element={
               <div className="p-6">
                 <MyFiles 
@@ -254,7 +221,6 @@ function AppContent() {
                 />
               </div>
             } />
-            
             <Route path="/shared" element={
               <div className="p-6">
                 <SharedWithMe 
@@ -265,13 +231,11 @@ function AppContent() {
                 />
               </div>
             } />
-            
             <Route path="/sendtokens" element={
               <SendTokens 
                 onBack={() => setActivePage('home')}
               />
             } />
-            
             <Route path="/profile" element={
               <div className="p-6">
                 <ProfileSettings 
@@ -281,24 +245,16 @@ function AppContent() {
                 />
               </div>
             } />
-            
             <Route path="/profile/:username" element={<div className="p-6"><Profile /></div>} />
-            
             {/* Admin Analytics Dashboard */}
             <Route path="/admin/analytics" element={
               <AnalyticsDashboard refreshTrigger={refreshTrigger} />
             } />
-            
-
           </Routes>
         </div>
-        
-
       </div>
-      
       {/* Back to Top Button */}
       <BackToTop />
-      
       {/* Floating Profile Widget - desktop version */}
       <div className={`fixed top-0 z-[9999] ${sidebarCollapsed ? 'left-0 right-0' : 'left-[280px] right-0'}`}>
         <ProfileWidget 
@@ -311,7 +267,6 @@ function AppContent() {
     </div>
   );
 }
-
 function App() {
   return (
     <Router>
@@ -320,5 +275,4 @@ function App() {
     </Router>
   );
 }
-
 export default App;

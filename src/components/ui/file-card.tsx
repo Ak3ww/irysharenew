@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { MoreVertical, Download, Share } from 'lucide-react';
-
 interface FileData {
   id: string;
   owner_address: string;
@@ -19,34 +18,28 @@ interface FileData {
   recipient_username?: string;
   shared_at?: string;
 }
-
 interface FileCardProps {
   file: FileData;
   isNew?: boolean;
   onPreview: (file: FileData) => void;
   onMenuAction: (action: string, file: FileData) => void;
 }
-
 export function FileCard({ file, isNew = false, onPreview, onMenuAction }: FileCardProps) {
   const [showShareMenu, setShowShareMenu] = useState(false);
-
   // File type helpers
   const isImage = (file: FileData) => {
     const name = file?.file_name?.toLowerCase() || '';
     return name.endsWith('.png') || name.endsWith('.jpg') || name.endsWith('.jpeg') || 
            name.endsWith('.gif') || name.endsWith('.bmp') || name.endsWith('.webp');
   };
-
   const isPDF = (file: FileData) => {
     const name = file?.file_name?.toLowerCase() || '';
     return name.endsWith('.pdf');
   };
-
   const isVideo = (file: FileData) => {
     const name = file?.file_name?.toLowerCase() || '';
     return name.endsWith('.mp4') || name.endsWith('.webm') || name.endsWith('.mov') || name.endsWith('.avi');
   };
-
   const isAudio = (file: FileData) => {
   const name = file?.file_name?.toLowerCase() || '';
   const type = file?.file_type?.toLowerCase() || '';
@@ -54,7 +47,6 @@ export function FileCard({ file, isNew = false, onPreview, onMenuAction }: FileC
          name.endsWith('.m4a') || name.endsWith('.aac') || name.endsWith('.webm') || name.endsWith('.opus') ||
          type.startsWith('audio/');
 };
-
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -62,18 +54,15 @@ export function FileCard({ file, isNew = false, onPreview, onMenuAction }: FileC
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
-
   // Menu functions
   const handleMenuClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     setShowShareMenu(!showShareMenu);
   };
-
   const handleMenuAction = (action: string) => {
     setShowShareMenu(false);
     onMenuAction(action, file);
   };
-
   return (
     <div
       className={`group relative bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 transition-all duration-300 hover:bg-white/10 hover:border-white/20 hover:scale-105 cursor-pointer ${
@@ -86,7 +75,6 @@ export function FileCard({ file, isNew = false, onPreview, onMenuAction }: FileC
           New
         </div>
       )}
-      
       <div className="mb-4 flex items-center justify-center" style={{ minHeight: 80 }}>
         {isImage(file) ? (
           <div className="text-4xl">🖼️</div>
@@ -100,7 +88,6 @@ export function FileCard({ file, isNew = false, onPreview, onMenuAction }: FileC
           <div className="text-4xl">📁</div>
         )}
       </div>
-      
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           <h3 className="text-white font-semibold text-sm truncate flex-1">
@@ -110,7 +97,6 @@ export function FileCard({ file, isNew = false, onPreview, onMenuAction }: FileC
             <span className="text-[#67FFD4] text-lg" title="Encrypted file">🔒</span>
           )}
         </div>
-        
         <div className="flex items-center justify-between text-xs text-white/60">
           <span>
             {file.shared_at ? 
@@ -120,14 +106,12 @@ export function FileCard({ file, isNew = false, onPreview, onMenuAction }: FileC
           </span>
           <span>{formatFileSize(file.file_size_bytes)}</span>
         </div>
-        
         {!file.is_owned && (
           <div className="text-xs text-[#67FFD4] font-medium">
             From: {file.owner_address.slice(0, 6)}...{file.owner_address.slice(-4)}
           </div>
         )}
       </div>
-      
       {/* 3-Dot Menu */}
       <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity z-20">
         <div className="relative">
@@ -138,7 +122,6 @@ export function FileCard({ file, isNew = false, onPreview, onMenuAction }: FileC
           >
             <MoreVertical size={16} />
           </button>
-          
           {/* Dropdown Menu */}
           {showShareMenu && (
             <div className="absolute right-0 top-8 bg-[#1A1A1A] border border-white/20 rounded-lg shadow-lg z-30 min-w-[120px]">

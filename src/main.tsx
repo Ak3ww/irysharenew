@@ -1,5 +1,5 @@
 import React from 'react'
-import ReactDOM from 'react-dom/client'
+import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
 import '@rainbow-me/rainbowkit/styles.css';
@@ -12,10 +12,8 @@ import {
   QueryClientProvider,
   QueryClient,
 } from "@tanstack/react-query";
-
 const projectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID;
 if (!projectId) throw new Error("VITE_WALLETCONNECT_PROJECT_ID is not set in .env");
-
 // Irys Testnet configuration
 const irysTestnet = {
   id: 1270,
@@ -29,7 +27,6 @@ const irysTestnet = {
     default: { name: 'Irys Explorer', url: 'https://testnet-explorer.irys.xyz' },
   },
 } as const;
-
 const config = getDefaultConfig({
   appName: 'Iryshare',
   projectId,
@@ -37,8 +34,7 @@ const config = getDefaultConfig({
   ssr: true,
 });
 const queryClient = new QueryClient();
-
-ReactDOM.createRoot(document.getElementById('root')!).render(
+createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>

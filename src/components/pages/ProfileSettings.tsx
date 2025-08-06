@@ -5,14 +5,12 @@ import { FileInput } from '../ui/file-input';
 import { supabase } from '../../utils/supabase';
 import { uploadFile } from '../../utils/irys';
 import Cropper from 'react-easy-crop';
-
 interface ProfileSettingsProps {
   address: string;
   isConnected: boolean;
   usernameSaved: boolean;
   onBack?: () => void;
 }
-
 // Full image cropper component using react-easy-crop
 function ImageCropper({ 
   imageUrl, 
@@ -32,7 +30,6 @@ function ImageCropper({
     width: number;
     height: number;
   } | null>(null);
-
   const onCropComplete = useCallback((_: {
     x: number;
     y: number;
@@ -46,7 +43,6 @@ function ImageCropper({
   }) => {
     setCroppedAreaPixels(croppedAreaPixels);
   }, []);
-
   const createImage = (url: string): Promise<HTMLImageElement> =>
     new Promise((resolve, reject) => {
       const image = new Image();
@@ -55,7 +51,6 @@ function ImageCropper({
       image.setAttribute('crossOrigin', 'anonymous');
       image.src = url;
     });
-
   const getCroppedImg = async (
     imageSrc: string,
     pixelCrop: {
@@ -68,48 +63,36 @@ function ImageCropper({
     flip = { horizontal: false, vertical: false }
   ): Promise<string> => {
     const image = await createImage(imageSrc);
-
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
-
     if (!ctx) {
       throw new Error('No 2d context');
     }
-
     const rotRad = (rotation * Math.PI) / 180;
-
     // calculate bounding box of the rotated image
     const { width: bBoxWidth, height: bBoxHeight } = rotateSize(
       image.width,
       image.height,
       rotation
     );
-
     // set canvas size to match the bounding box
     canvas.width = bBoxWidth;
     canvas.height = bBoxHeight;
-
     // translate canvas context to a central location to allow rotating and flipping around the center
     ctx.translate(bBoxWidth / 2, bBoxHeight / 2);
     ctx.rotate(rotRad);
     ctx.scale(flip.horizontal ? -1 : 1, flip.vertical ? -1 : 1);
     ctx.translate(-image.width / 2, -image.height / 2);
-
     // draw rotated image
     ctx.drawImage(image, 0, 0);
-
     const croppedCanvas = document.createElement('canvas');
-
     const croppedCtx = croppedCanvas.getContext('2d');
-
     if (!croppedCtx) {
       throw new Error('No 2d context');
     }
-
     // Set the size of the cropped canvas
     croppedCanvas.width = pixelCrop.width;
     croppedCanvas.height = pixelCrop.height;
-
     // Draw the cropped image
     croppedCtx.drawImage(
       canvas,
@@ -122,14 +105,11 @@ function ImageCropper({
       pixelCrop.width,
       pixelCrop.height
     );
-
     // As a Base64 string
     return croppedCanvas.toDataURL('image/jpeg', 0.9);
   };
-
   const rotateSize = (width: number, height: number, rotation: number) => {
     const rotRad = (rotation * Math.PI) / 180;
-
     return {
       width:
         Math.abs(Math.cos(rotRad) * width) + Math.abs(Math.sin(rotRad) * height),
@@ -137,7 +117,6 @@ function ImageCropper({
         Math.abs(Math.sin(rotRad) * width) + Math.abs(Math.cos(rotRad) * height),
     };
   };
-
   // ESC key handler
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -145,18 +124,15 @@ function ImageCropper({
         onCancel();
       }
     };
-
     document.addEventListener('keydown', handleEsc);
     return () => document.removeEventListener('keydown', handleEsc);
   }, [onCancel]);
-
   // Click outside handler
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
       onCancel();
     }
   };
-
   const handleApply = async () => {
     try {
       if (croppedAreaPixels) {
@@ -176,7 +152,6 @@ function ImageCropper({
       onCrop(imageUrl);
     }
   };
-
   return (
     <div 
       className="fixed inset-0 bg-black/90 flex items-center justify-center z-[9999]"
@@ -190,12 +165,10 @@ function ImageCropper({
         <h3 className="text-xl text-white font-semibold mb-4 text-center" style={{ fontFamily: 'Irys2' }}>
           Adjust Profile Picture
         </h3>
-        
         <div className="mb-4">
           <p className="text-white/70 text-sm text-center mb-4" style={{ fontFamily: 'Irys2' }}>
             Drag to move • Pinch/scroll to zoom • Use sliders for fine control
           </p>
-          
           {/* Image Editor Container */}
           <div className="flex justify-center">
             <div className="relative bg-gray-900 rounded-lg overflow-hidden border-2 border-white/20" style={{ width: '400px', height: '400px' }}>
@@ -226,7 +199,6 @@ function ImageCropper({
             </div>
           </div>
         </div>
-        
         {/* Controls */}
         <div className="space-y-4">
           {/* Zoom Control */}
@@ -244,7 +216,6 @@ function ImageCropper({
               className="w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer slider"
             />
           </div>
-          
           {/* Rotation Control */}
           <div>
             <label className="text-white/80 text-sm font-medium block mb-2" style={{ fontFamily: 'Irys2' }}>
@@ -261,7 +232,6 @@ function ImageCropper({
             />
           </div>
         </div>
-        
         {/* Action Buttons */}
         <div className="flex gap-3 mt-6">
           <Button
@@ -283,7 +253,6 @@ function ImageCropper({
     </div>
   );
 }
-
 export function ProfileSettings({ address, isConnected, usernameSaved, onBack }: ProfileSettingsProps) {
   const [username, setUsername] = useState('');
   const [currentUsername, setCurrentUsername] = useState('');
@@ -299,7 +268,6 @@ export function ProfileSettings({ address, isConnected, usernameSaved, onBack }:
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [usernameLoading, setUsernameLoading] = useState(false);
-
   // ESC key handler for back navigation
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -307,19 +275,15 @@ export function ProfileSettings({ address, isConnected, usernameSaved, onBack }:
         onBack();
       }
     };
-
     document.addEventListener('keydown', handleEsc);
     return () => document.removeEventListener('keydown', handleEsc);
   }, [onBack]);
-
   // Fetch current profile data
   useEffect(() => {
     if (!address || !isConnected || !usernameSaved) return;
-    
     const fetchProfile = async () => {
       setUsernameLoading(true);
       const normalizedAddress = address.toLowerCase().trim();
-      
       try {
         // Fetch username and profile data
         const { data: usernameData, error: usernameError } = await supabase
@@ -327,7 +291,6 @@ export function ProfileSettings({ address, isConnected, usernameSaved, onBack }:
           .select('username, profile_public, profile_bio, profile_avatar')
           .eq('address', normalizedAddress)
           .single();
-        
         if (usernameError) {
           console.error('Error fetching username:', usernameError);
         } else if (usernameData) {
@@ -338,31 +301,24 @@ export function ProfileSettings({ address, isConnected, usernameSaved, onBack }:
           // Set profile visibility based on profile_public from usernames table
           setProfileVisible(usernameData.profile_public !== false);
         }
-        
       } catch (error) {
         console.error('Error fetching profile:', error);
       } finally {
         setUsernameLoading(false);
       }
     };
-    
     fetchProfile();
   }, [address, isConnected, usernameSaved]);
-
   const handleAvatarUpload = useCallback(async (file: File) => {
     if (!address) return;
-    
     setAvatarUploading(true);
     setError('');
-    
     try {
       // Get Irys uploader
       const { getIrysUploader } = await import('../../utils/irys');
       const irysUploader = await getIrysUploader();
-      
       // Upload avatar to Irys
       const avatarUrl = await uploadFile(irysUploader, file);
-      
       setTempAvatarUrl(avatarUrl);
       setAvatarUploaded(true);
       setAvatarFile(null);
@@ -375,26 +331,21 @@ export function ProfileSettings({ address, isConnected, usernameSaved, onBack }:
       setAvatarUploading(false);
     }
   }, [address]);
-
   const handleCropComplete = (croppedImageUrl: string) => {
     setProfileAvatar(croppedImageUrl);
     setShowCropper(false);
     setSuccess('Profile picture adjusted! Click "Save Profile Settings" to apply changes.');
   };
-
   const handleSaveProfile = async () => {
     if (!address) return;
-    
     // Check if avatar was uploaded but not saved
     if (avatarUploaded && !profileAvatar) {
       setError('Please adjust your profile picture position before saving.');
       return;
     }
-    
     setLoading(true);
     setError('');
     setSuccess('');
-
     try {
       // Request MetaMask signature to prove wallet ownership
       if (!(window as { ethereum?: { request: (params: { method: string; params: string[] }) => Promise<string> } }).ethereum) {
@@ -402,20 +353,16 @@ export function ProfileSettings({ address, isConnected, usernameSaved, onBack }:
         setLoading(false);
         return;
       }
-
       const message = `Iryshare Profile Update\n\nWallet: ${address}\nProfile Visibility: ${profileVisible ? 'Public' : 'Private'}\nBio: ${profileBio}\nAvatar: ${profileAvatar}\n\nSign this message to update your profile.`;
-
       const signature = await (window as { ethereum: { request: (params: { method: string; params: string[] }) => Promise<string> } }).ethereum.request({
         method: 'personal_sign',
         params: [message, address]
       });
-
       if (!signature) {
         setError('Signature required for profile update');
         setLoading(false);
         return;
       }
-
       // Update profile data in usernames table
       const { error: updateError } = await supabase
         .from('usernames')
@@ -426,27 +373,23 @@ export function ProfileSettings({ address, isConnected, usernameSaved, onBack }:
           registration_signature: signature
         })
         .eq('address', address.toLowerCase().trim());
-
       if (updateError) {
         console.error('Error updating profile:', updateError);
         setError('Error updating profile');
         setLoading(false);
         return;
       }
-
       // Update profile visibility for all user's files
       const { error: filesError } = await supabase
         .from('files')
         .update({ profile_visible: profileVisible })
         .eq('owner_address', address.toLowerCase().trim());
-
       if (filesError) {
         console.error('Error updating profile_visible:', filesError);
         setError('Error updating profile visibility');
         setLoading(false);
         return;
       }
-
       setAvatarUploaded(false);
       setSuccess('Profile updated successfully!');
     } catch (error) {
@@ -460,7 +403,6 @@ export function ProfileSettings({ address, isConnected, usernameSaved, onBack }:
       setLoading(false);
     }
   };
-
   const handleSaveUsername = async () => {
     if (!username.trim()) {
       setError('Username is required');
@@ -470,11 +412,9 @@ export function ProfileSettings({ address, isConnected, usernameSaved, onBack }:
       setError('Wallet address is required');
       return;
     }
-
     setLoading(true);
     setError('');
     setSuccess('');
-
     try {
       // Check if username is taken (excluding current user)
       if (username.trim() !== currentUsername) {
@@ -484,34 +424,28 @@ export function ProfileSettings({ address, isConnected, usernameSaved, onBack }:
           .eq('username', username.trim())
           .neq('address', address.toLowerCase().trim())
           .single();
-
         if (existing) {
           setError('Username is already taken');
           setLoading(false);
           return;
         }
       }
-
       // Request MetaMask signature to prove wallet ownership
       if (!(window as { ethereum?: { request: (params: { method: string; params: string[] }) => Promise<string> } }).ethereum) {
         setError('MetaMask is required for username update');
         setLoading(false);
         return;
       }
-
       const message = `Iryshare Username Update\n\nWallet: ${address}\nNew Username: ${username.trim()}\n\nSign this message to update your username.`;
-
       const signature = await (window as { ethereum: { request: (params: { method: string; params: string[] }) => Promise<string> } }).ethereum.request({
         method: 'personal_sign',
         params: [message, address]
       });
-
       if (!signature) {
         setError('Signature required for username update');
         setLoading(false);
         return;
       }
-
       // Update username in Supabase
       const { error: updateError } = await supabase
         .from('usernames')
@@ -520,13 +454,11 @@ export function ProfileSettings({ address, isConnected, usernameSaved, onBack }:
           registration_signature: signature
         })
         .eq('address', address.toLowerCase().trim());
-
       if (updateError) {
         setError('Error updating username');
         setLoading(false);
         return;
       }
-
       setCurrentUsername(username.trim());
       setSuccess('Username updated successfully!');
     } catch (error) {
@@ -540,9 +472,6 @@ export function ProfileSettings({ address, isConnected, usernameSaved, onBack }:
       setLoading(false);
     }
   };
-
-
-
   if (!isConnected || !usernameSaved) {
     return (
       <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6">
@@ -550,7 +479,6 @@ export function ProfileSettings({ address, isConnected, usernameSaved, onBack }:
       </div>
     );
   }
-
   return (
     <div className="bg-[#18191a] p-6">
       <div className="max-w-4xl mx-auto">
@@ -568,7 +496,6 @@ export function ProfileSettings({ address, isConnected, usernameSaved, onBack }:
             <h3 className="text-2xl text-white font-semibold flex-1 text-center" style={{ fontFamily: 'Irys1', letterSpacing: '0.1em' }}>PROFILE SETTINGS</h3>
             {onBack && <div className="w-10"></div>} {/* Spacer for centering */}
           </div>
-
           {usernameLoading ? (
             <div className="text-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#67FFD4] mx-auto"></div>
@@ -582,7 +509,6 @@ export function ProfileSettings({ address, isConnected, usernameSaved, onBack }:
                   <User size={24} className="text-[#67FFD4]" />
                   Username
                 </h4>
-                
                 <div className="space-y-6">
                   <div>
                     <label className="text-white/80 text-sm font-medium block mb-2" style={{ fontFamily: 'Irys2' }}>
@@ -592,7 +518,6 @@ export function ProfileSettings({ address, isConnected, usernameSaved, onBack }:
                       @{currentUsername}
                     </div>
                   </div>
-                  
                   <div>
                     <label className="text-white/80 text-sm font-medium block mb-2" style={{ fontFamily: 'Irys2' }}>
                       New Username
@@ -607,7 +532,6 @@ export function ProfileSettings({ address, isConnected, usernameSaved, onBack }:
                       style={{ fontFamily: 'Irys2' }}
                     />
                   </div>
-                  
                   <Button
                     variant="irys"
                     onClick={handleSaveUsername}
@@ -619,14 +543,12 @@ export function ProfileSettings({ address, isConnected, usernameSaved, onBack }:
                   </Button>
                 </div>
               </div>
-
               {/* Profile Visibility Section */}
               <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6">
                 <h4 className="text-xl text-white font-medium mb-6 flex items-center gap-3" style={{ fontFamily: 'Irys2' }}>
                   {profileVisible ? <Eye size={24} className="text-[#67FFD4]" /> : <EyeOff size={24} className="text-[#67FFD4]" />}
                   Profile Visibility
                 </h4>
-                
                 <div className="space-y-6">
                   <div className="flex items-center gap-4">
                     <input
@@ -641,7 +563,6 @@ export function ProfileSettings({ address, isConnected, usernameSaved, onBack }:
                       Make my profile and files publicly searchable
                     </label>
                   </div>
-                  
                   <p className="text-white/80 text-sm" style={{ fontFamily: 'Irys2' }}>
                     {profileVisible 
                       ? "Your profile and files will be visible to other users and searchable by username."
@@ -650,14 +571,12 @@ export function ProfileSettings({ address, isConnected, usernameSaved, onBack }:
                   </p>
                 </div>
               </div>
-
               {/* Profile Details Section */}
               <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6">
                 <h4 className="text-xl text-white font-medium mb-6 flex items-center gap-3" style={{ fontFamily: 'Irys2' }}>
                   <User size={24} className="text-[#67FFD4]" />
                   Profile Details
                 </h4>
-                
                 <div className="space-y-6">
                   <div>
                     <label className="text-white/80 text-sm font-medium block mb-2" style={{ fontFamily: 'Irys2' }}>
@@ -673,7 +592,6 @@ export function ProfileSettings({ address, isConnected, usernameSaved, onBack }:
                       style={{ fontFamily: 'Irys2' }}
                     />
                   </div>
-                  
                   <div>
                     <label className="text-white/80 text-sm font-medium block mb-2 flex items-center gap-2" style={{ fontFamily: 'Irys2' }}>
                       Profile Avatar
@@ -684,7 +602,6 @@ export function ProfileSettings({ address, isConnected, usernameSaved, onBack }:
                          </div>
                       </div>
                     </label>
-                    
                     {/* Avatar Preview */}
                     <div className="flex items-center gap-6 mb-4">
                       <div className="flex items-center justify-center w-24 h-24 bg-white/5 rounded-full overflow-hidden border-2 border-white/10">
@@ -694,7 +611,6 @@ export function ProfileSettings({ address, isConnected, usernameSaved, onBack }:
                           <User size={48} className="text-white/40" />
                         )}
                       </div>
-                      
                       {/* Avatar Upload */}
                       <div className="flex-1">
                         <FileInput
@@ -704,7 +620,6 @@ export function ProfileSettings({ address, isConnected, usernameSaved, onBack }:
                               setAvatarFile(file);
                               setSuccess(''); // Clear previous success messages
                               setError(''); // Clear previous errors
-                              
                               // Automatically upload to Irys
                               await handleAvatarUpload(file);
                             } else {
@@ -720,7 +635,6 @@ export function ProfileSettings({ address, isConnected, usernameSaved, onBack }:
                         />
                       </div>
                     </div>
-                    
                                          {/* Upload Status */}
                      {avatarUploading && (
                        <div className="mb-4">
@@ -732,7 +646,6 @@ export function ProfileSettings({ address, isConnected, usernameSaved, onBack }:
                          </div>
                        </div>
                      )}
-                     
                      {avatarUploaded && tempAvatarUrl && (
                        <div className="mb-4">
                          <div className="flex items-center gap-2 mb-2">
@@ -744,7 +657,6 @@ export function ProfileSettings({ address, isConnected, usernameSaved, onBack }:
                        </div>
                      )}
                   </div>
-                  
                   <Button
                     variant="irys"
                     onClick={handleSaveProfile}
@@ -756,14 +668,12 @@ export function ProfileSettings({ address, isConnected, usernameSaved, onBack }:
                   </Button>
                 </div>
               </div>
-
               {/* Error and Success Messages */}
               {error && (
                 <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-6 py-4 rounded-lg">
                   {error}
                 </div>
               )}
-              
               {success && (
                 <div className="bg-green-500/10 border border-green-500/20 text-green-400 px-6 py-4 rounded-lg">
                   {success}
@@ -773,7 +683,6 @@ export function ProfileSettings({ address, isConnected, usernameSaved, onBack }:
           )}
         </div>
       </div>
-      
       {/* Image Cropper Modal */}
       {showCropper && tempAvatarUrl && (
         <ImageCropper

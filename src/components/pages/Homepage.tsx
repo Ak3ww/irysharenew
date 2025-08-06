@@ -9,7 +9,6 @@ import { uploadEncryptedToIrys } from '../../utils/aesIrys';
 import { getIrysUploader } from '../../utils/irys';
 import { useToast } from '../../hooks/use-toast';
 import { trackFileUpload, trackError, trackPageView } from '../../utils/analytics';
-
 interface HomepageProps {
   address: string;
   isConnected: boolean;
@@ -18,10 +17,8 @@ interface HomepageProps {
   refreshTrigger?: number;
   onPageChange?: (page: string) => void;
 }
-
 export function Homepage({ address, isConnected, usernameSaved, onFileUpload, refreshTrigger = 0, onPageChange }: HomepageProps) {
   const { toast } = useToast();
-  
   // Upload state
   const [selectedAction, setSelectedAction] = useState('');
   const [file, setFile] = useState<File | null>(null);
@@ -29,15 +26,12 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStage, setUploadStage] = useState('');
-  
   // Share state
   const [shareRecipients, setShareRecipients] = useState('');
   const [shareRecipientsValid, setShareRecipientsValid] = useState<Array<{address: string, username?: string}>>([]);
   const [shareRecipientsError, setShareRecipientsError] = useState('');
   const [storePrivate, setStorePrivate] = useState(false);
-  
   const fileInputRef = useRef<HTMLInputElement>(null);
-
   // ESC key handler for closing modals
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -52,16 +46,13 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
         }
       }
     };
-
     document.addEventListener('keydown', handleEsc);
     return () => document.removeEventListener('keydown', handleEsc);
   }, [selectedAction]);
-
   // Track page view
   useEffect(() => {
     trackPageView('homepage');
   }, []);
-
   const handleFileSelect = (file: File | null) => {
     if (file) {
       setFile(file);
@@ -70,18 +61,16 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
       setFile(null);
     }
   };
-
   const validateRecipients = async (recipients: string) => {
     if (!recipients.trim()) {
       setShareRecipientsValid([]);
       setShareRecipientsError('');
       return;
     }
-
     const recipientList = recipients.split(',').map(r => r.trim()).filter(r => r);
     const validRecipients: Array<{address: string, username?: string}> = [];
     const errors: string[] = [];
-
+    const seenAddresses = new Set<string>(); // Track duplicates within input
     for (const recipient of recipientList) {
       if (recipient.startsWith('@')) {
         // Username lookup - case insensitive
@@ -90,16 +79,26 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
           errors.push('Enter a username after @');
           continue;
         }
-        
         try {
           const { data } = await supabase
             .from('usernames')
             .select('address')
             .ilike('username', username)
             .single();
-          
           if (data) {
-            validRecipients.push({ address: data.address.toLowerCase(), username });
+            const addressLower = data.address.toLowerCase();
+            // Check if trying to share with self
+            if (address && addressLower === address.toLowerCase()) {
+              errors.push(`Cannot share with yourself (@${username})`);
+              continue;
+            }
+            // Check for duplicates in current input
+            if (seenAddresses.has(addressLower)) {
+              errors.push(`Duplicate recipient: @${username}`);
+              continue;
+            }
+            seenAddresses.add(addressLower);
+            validRecipients.push({ address: addressLower, username });
           } else {
             errors.push(`User @${username} not found`);
           }
@@ -109,7 +108,17 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
       } else if (/^0x[a-f0-9]{40}$/.test(recipient.toLowerCase())) {
         // Direct address - validate format and check for username
         const addressLower = recipient.toLowerCase();
-        
+        // Check if trying to share with self
+        if (address && addressLower === address.toLowerCase()) {
+          errors.push(`Cannot share with yourself (${addressLower.slice(0, 6)}...${addressLower.slice(-4)})`);
+          continue;
+        }
+        // Check for duplicates in current input
+        if (seenAddresses.has(addressLower)) {
+          errors.push(`Duplicate recipient: ${addressLower.slice(0, 6)}...${addressLower.slice(-4)}`);
+          continue;
+        }
+        seenAddresses.add(addressLower);
         // Optionally look up username for display
         try {
           const { data } = await supabase
@@ -117,7 +126,6 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
             .select('username')
             .eq('address', addressLower)
             .single();
-          
           if (data && data.username) {
             validRecipients.push({ address: addressLower, username: data.username });
           } else {
@@ -131,26 +139,20 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
         errors.push(`Invalid recipient: ${recipient} (use @username or 0x address)`);
       }
     }
-
     setShareRecipientsValid(validRecipients);
     setShareRecipientsError(errors.join(', '));
   };
-
   const handleUpload = async () => {
     if (!file || !address) return;
-
     setUploading(true);
     setUploadError(null);
     setUploadProgress(0);
     setUploadStage('Preparing upload...');
-
     try {
       let uploadUrl: string;
-
       if (selectedAction === 'share') {
         // Share files (encrypted)
         setUploadStage('Encrypting and uploading to Irys...');
-        
         // Convert file to ArrayBuffer
         const arrayBuffer = await file.arrayBuffer();
         uploadUrl = await uploadEncryptedToIrys(
@@ -161,7 +163,6 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
           shareRecipientsValid.map(r => r.address)
         );
         setUploadProgress(50);
-        
         setUploadStage('Saving to database...');
         // Save to database
         const { data: fileData, error: dbError } = await supabase
@@ -176,9 +177,7 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
           })
           .select()
           .single();
-
         if (dbError) throw dbError;
-
         // Save shares
         for (const recipient of shareRecipientsValid) {
           await supabase
@@ -189,7 +188,6 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
               recipient_username: recipient.username
             });
         }
-
         setUploadProgress(100);
         setUploadStage('Upload complete!');
       } else {
@@ -197,7 +195,6 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
         if (storePrivate) {
           // Private files should be encrypted
           setUploadStage('Encrypting and uploading to Irys...');
-          
           // Convert file to ArrayBuffer
           const arrayBuffer = await file.arrayBuffer();
           uploadUrl = await uploadEncryptedToIrys(
@@ -210,13 +207,11 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
         } else {
           // Public files use regular upload
           setUploadStage('Uploading to Irys...');
-          
           // Get Irys uploader
           const irysUploader = await getIrysUploader();
           uploadUrl = await uploadFile(irysUploader, file);
         }
         setUploadProgress(50);
-        
         setUploadStage('Saving to database...');
         const { data: fileData, error: dbError } = await supabase
           .from('files')
@@ -232,9 +227,7 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
           })
           .select()
           .single();
-
         if (dbError) throw dbError;
-
         // Save shares if recipients are specified
         if (shareRecipientsValid.length > 0) {
           for (const recipient of shareRecipientsValid) {
@@ -247,13 +240,9 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
               });
           }
         }
-
         setUploadProgress(100);
         setUploadStage('Upload complete!');
       }
-
-
-
       // Update storage usage with proper error handling
       try {
         // First, try to get current storage or create if doesn't exist
@@ -262,7 +251,6 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
           .select('used_bytes')
           .eq('address', address.toLowerCase().trim())
           .single();
-        
         if (storageError && storageError.code === 'PGRST116') {
           // User doesn't exist in storage table, create new record
           const { error: insertError } = await supabase
@@ -273,7 +261,6 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
               total_bytes: 12884901888, // ~12GB default
               last_updated: new Date().toISOString()
             });
-          
           if (insertError) {
             console.error('Failed to create user storage record:', insertError);
             // Continue with upload even if storage tracking fails
@@ -285,7 +272,6 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
           // User exists, update storage usage
           const currentUsage = currentStorage?.used_bytes || 0;
           const newUsage = currentUsage + file.size;
-          
           const { error: updateError } = await supabase
             .from('user_storage')
             .update({
@@ -293,7 +279,6 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
               last_updated: new Date().toISOString()
             })
             .eq('address', address.toLowerCase().trim());
-          
           if (updateError) {
             console.error('Failed to update user storage:', updateError);
             // Continue with upload even if storage tracking fails
@@ -303,7 +288,6 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
         console.error('Storage tracking error:', storageError);
         // Continue with upload even if storage tracking fails
       }
-
       // Reset form
       setFile(null);
       setShareRecipients('');
@@ -312,12 +296,10 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
-
       // Trigger refresh
       if (onFileUpload) {
         onFileUpload();
       }
-
       // Track successful upload
       trackFileUpload(
         file.size,
@@ -326,7 +308,6 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
         selectedAction as 'share' | 'store',
         shareRecipientsValid.length
       );
-
       // Show success toast
       toast({
         title: "Upload Successful!",
@@ -335,33 +316,27 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
           : `File "${file.name}" uploaded successfully`,
         variant: "success",
       });
-
       setTimeout(() => {
         setUploading(false);
         setUploadProgress(0);
         setUploadStage('');
       }, 2000);
-
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Upload failed';
       setUploadError(errorMessage);
-      
       // Track error
       trackError('upload_failed', errorMessage, selectedAction);
-      
       // Show error toast
       toast({
         title: "Upload Failed",
         description: errorMessage,
         variant: "destructive",
       });
-      
       setUploading(false);
       setUploadProgress(0);
       setUploadStage('');
     }
   };
-
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
       setSelectedAction('');
@@ -374,7 +349,6 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
       }
     }
   };
-
   return (
     <div className="min-h-screen bg-[#18191a] p-4 md:p-6">
       <div className="max-w-7xl mx-auto">
@@ -390,10 +364,7 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
               </div>
             </div>
           </div>
-          
-
         </div>
-
         {/* Action Cards */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-12">
           {/* Share & Store Files Card */}
@@ -422,7 +393,6 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
               </Button>
             </div>
           </div>
-
           {/* Send Tokens Card */}
           <div className="rounded-lg p-6 flex flex-col bg-gradient-to-br from-yellow-400 to-orange-500">
             <div className="flex items-center gap-3 mb-4">
@@ -441,7 +411,6 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
             </Button>
           </div>
         </div>
-
         {/* Recent Files */}
         <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-4 md:p-6">
           <h2 className="text-white font-semibold text-xl mb-6">Recent Files</h2>
@@ -453,7 +422,6 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
           />
         </div>
       </div>
-
       {/* Upload Modal */}
       {selectedAction && (
         <div 
@@ -486,7 +454,6 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
                 <X size={20} />
               </button>
             </div>
-
             {/* File Selection */}
             <div className="mb-6">
               <label className="text-[#67FFD4] font-bold block mb-2" style={{ fontFamily: 'Irys2' }}>
@@ -503,7 +470,6 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
                 maxSize={25 * 1024 * 1024} // 25MB limit
               />
             </div>
-
             {/* Share Recipients (only for share action) */}
             {selectedAction === 'share' && (
               <div className="mb-6">
@@ -537,7 +503,6 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
                 )}
               </div>
             )}
-
             {/* Storage Type (only for store action) */}
             {selectedAction === 'store' && (
               <div className="mb-6">
@@ -576,7 +541,6 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
                 </div>
               </div>
             )}
-
             {/* Upload Progress */}
             {uploading && (
               <div className="mb-6">
@@ -591,14 +555,12 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
                 </div>
               </div>
             )}
-
             {/* Error Message */}
             {uploadError && (
               <div className="mb-6 bg-red-500/20 border border-red-500/30 text-red-400 px-4 py-3 rounded-lg">
                 {uploadError}
               </div>
             )}
-
             {/* Upload Button */}
             <Button
               variant="irys"
@@ -611,8 +573,6 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
           </div>
         </div>
       )}
-
-
     </div>
   );
 } 

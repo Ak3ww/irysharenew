@@ -6,7 +6,6 @@ import { ProfileSearch } from '../ui/profile-search';
 import { FileCard } from '../ui/file-card';
 import { FilePreview } from '../ui/file-preview';
 import { Button } from '../ui/button';
-
 interface ProfileData {
   id?: number;
   username: string;
@@ -18,7 +17,6 @@ interface ProfileData {
   updated_at?: string;
   public_file_count?: number;
 }
-
 interface ProfileFile {
   id: string;
   file_name: string;
@@ -33,7 +31,6 @@ interface ProfileFile {
   updated_at: string;
   owner_address: string;
 }
-
 export function Profile() {
   const { username } = useParams<{ username: string }>();
   const navigate = useNavigate();
@@ -43,53 +40,37 @@ export function Profile() {
   const [error, setError] = useState<string | null>(null);
   const [showProfileSearch, setShowProfileSearch] = useState(false);
   const [selectedFile, setSelectedFile] = useState<ProfileFile | null>(null);
-
   // Extract username from URL (remove @ if present)
   const cleanUsername = username?.startsWith('@') ? username.slice(1) : username;
-
   useEffect(() => {
     if (!cleanUsername) {
       setError('No username provided');
       setLoading(false);
       return;
     }
-
     const loadProfile = async () => {
       try {
         setLoading(true);
         setError(null);
-
-        console.log('🔄 Loading profile for username:', cleanUsername);
-
         // Get profile data (including private profiles)
         const { data: profileResult, error: profileError } = await supabase
           .from('usernames')
           .select('*')
           .eq('username', cleanUsername)
           .single();
-
         if (profileError) {
           console.error('Profile error:', profileError);
           setError('Profile not found');
           setLoading(false);
           return;
         }
-
         if (!profileResult) {
           setError('Profile not found');
           setLoading(false);
           return;
         }
-
-        console.log('📊 Profile data received:', profileResult);
-        console.log('🔒 Profile public status:', profileResult.profile_public);
-
         const profile = profileResult;
         setProfileData(profile);
-
-        // Load files based on profile visibility
-        console.log('🔍 Loading files for address:', profile.address.toLowerCase());
-        
         // CRITICAL SECURITY FIX: Only load files that are explicitly public AND profile visible
         const { data: filesResult, error: filesError } = await supabase
           .from('files')
@@ -99,9 +80,6 @@ export function Profile() {
           .eq('profile_visible', true)  // Must be explicitly profile visible
           .order('created_at', { ascending: false })
           .limit(20);
-
-        console.log('📁 Files query result:', { filesResult, filesError });
-
         if (filesError) {
           console.error('Error loading files:', filesError);
           setProfileFiles([]);
@@ -111,23 +89,18 @@ export function Profile() {
             const isPublic = file.is_public === true;
             const isProfileVisible = file.profile_visible === true;
             const isEncrypted = file.is_encrypted === true;
-            
             // SECURITY: Never show encrypted files in public profiles
             if (isEncrypted) {
               console.warn('🚨 Security: Filtered out encrypted file from public profile:', file.file_name);
               return false;
             }
-            
             // SECURITY: Never show private files in public profiles
             if (!isPublic || !isProfileVisible) {
               console.warn('🚨 Security: Filtered out private file from public profile:', file.file_name);
               return false;
             }
-            
             return true;
           });
-          
-          console.log('🔒 Security filtered files:', publicFiles.length, 'of', filesResult?.length);
           setProfileFiles(publicFiles);
         }
       } catch (error) {
@@ -137,12 +110,8 @@ export function Profile() {
         setLoading(false);
       }
     };
-
     loadProfile();
-
     // Set up real-time subscription for profile changes
-    console.log('📡 Setting up real-time subscription for username:', cleanUsername);
-    
     const profileSubscription = supabase
       .channel(`profile-changes-${cleanUsername}`)
       .on(
@@ -154,26 +123,19 @@ export function Profile() {
           filter: `username=eq.${cleanUsername}`
         },
         (payload) => {
-          console.log('📡 Profile change detected:', payload);
-          console.log('🔄 Reloading profile data...');
           // Reload profile data when it changes
           loadProfile();
         }
       )
       .subscribe((status) => {
-        console.log('📡 Subscription status:', status);
       });
-
     return () => {
-      console.log('🧹 Cleaning up subscription for:', cleanUsername);
       profileSubscription.unsubscribe();
     };
   }, [cleanUsername]);
-
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
   };
-
   const handlePreview = (file: ProfileFile) => {
     // Security check: Verify this is a public file that should be previewable
     if (!file.is_public || !file.profile_visible) {
@@ -181,14 +143,11 @@ export function Profile() {
       alert('Access denied: Cannot preview private files');
       return;
     }
-    
     setSelectedFile(file);
   };
-
   const closePreview = () => {
     setSelectedFile(null);
   };
-
   const handleMenuAction = (action: string, file: ProfileFile) => {
     switch (action) {
       case 'download':
@@ -196,13 +155,10 @@ export function Profile() {
         break;
       case 'share':
         // Share functionality disabled for profile files (not owned by viewer)
-        console.log('Share disabled for profile files');
         break;
       default:
-        console.log('Unknown action:', action);
     }
   };
-
   const handleDirectDownload = async (file: ProfileFile) => {
     try {
       // Security check: Verify this is a public file that should be downloadable
@@ -211,7 +167,6 @@ export function Profile() {
         alert('Access denied: Cannot download private files');
         return;
       }
-      
       const response = await fetch(file.file_url);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
@@ -227,11 +182,8 @@ export function Profile() {
       alert('Download failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
   };
-
   const refreshProfile = async () => {
-    console.log('🔄 Manual refresh triggered');
     setLoading(true);
-    
     try {
       // Force reload profile data
       const { data: profileResult, error: profileError } = await supabase
@@ -239,22 +191,15 @@ export function Profile() {
         .select('*')
         .eq('username', cleanUsername)
         .single();
-
       if (profileError) {
         console.error('Refresh profile error:', profileError);
         return;
       }
-
       if (!profileResult) {
         console.error('No profile found on refresh');
         return;
       }
-
-      console.log('🔄 Refreshed profile data:', profileResult);
-      console.log('🔒 Refreshed profile public status:', profileResult.profile_public);
-
       setProfileData(profileResult);
-
       // Reload files
       const { data: filesResult, error: filesError } = await supabase
         .from('files')
@@ -264,7 +209,6 @@ export function Profile() {
         .eq('profile_visible', true)  // Must be explicitly profile visible
         .order('created_at', { ascending: false })
         .limit(20);
-
       if (filesError) {
         console.error('Refresh files error:', filesError);
         setProfileFiles([]);
@@ -274,23 +218,18 @@ export function Profile() {
           const isPublic = file.is_public === true;
           const isProfileVisible = file.profile_visible === true;
           const isEncrypted = file.is_encrypted === true;
-          
           // SECURITY: Never show encrypted files in public profiles
           if (isEncrypted) {
             console.warn('🚨 Security: Filtered out encrypted file from public profile:', file.file_name);
             return false;
           }
-          
           // SECURITY: Never show private files in public profiles
           if (!isPublic || !isProfileVisible) {
             console.warn('🚨 Security: Filtered out private file from public profile:', file.file_name);
             return false;
           }
-          
           return true;
         });
-        
-        console.log('🔒 Security filtered files:', publicFiles.length, 'of', filesResult?.length);
         setProfileFiles(publicFiles);
       }
     } catch (error) {
@@ -299,7 +238,6 @@ export function Profile() {
       setLoading(false);
     }
   };
-
   // Loading state
   if (loading) {
     return (
@@ -313,7 +251,6 @@ export function Profile() {
       </div>
     );
   }
-
   // Error state
   if (error) {
     return (
@@ -334,7 +271,6 @@ export function Profile() {
       </div>
     );
   }
-
   if (!profileData) {
     return (
       <div className="min-h-screen bg-[#18191a] p-6">
@@ -346,7 +282,6 @@ export function Profile() {
       </div>
     );
   }
-
   return (
     <div className="min-h-screen bg-[#18191a] p-6">
       <div className="max-w-7xl mx-auto">
@@ -397,7 +332,6 @@ export function Profile() {
             </div>
           </div>
         </div>
-
         {/* Profile Info */}
         <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 mb-6">
           <div className="flex items-center mb-4">
@@ -425,19 +359,16 @@ export function Profile() {
               </p>
             </div>
           </div>
-
           {profileData.profile_bio && (
             <div className="mb-4">
               <p className="text-white/80" style={{ fontFamily: 'Irys2' }}>{profileData.profile_bio}</p>
             </div>
           )}
-
           <div className="flex gap-4 text-sm text-white/60">
             <span>Joined: {formatDate(profileData.created_at)}</span>
             <span>Files: {profileFiles.length}</span>
           </div>
         </div>
-
         {/* Files Section */}
         {profileData.profile_public === false ? (
           <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-12 text-center">
@@ -484,14 +415,12 @@ export function Profile() {
           </div>
         )}
       </div>
-      
       {/* Profile Search Modal */}
       <ProfileSearch 
         isOpen={showProfileSearch}
         onClose={() => setShowProfileSearch(false)}
         currentAddress={profileData?.address}
       />
-
       {/* File Preview Modal */}
       {selectedFile && (
         <FilePreview

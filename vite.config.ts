@@ -23,11 +23,27 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  optimizeDeps: {
+    exclude: [
+      'vite-plugin-node-polyfills/shims/process',
+      'vite-plugin-node-polyfills/shims/buffer',
+      'vite-plugin-node-polyfills/shims/global',
+    ],
+  },
   build: {
+    sourcemap: false, // Hide source maps in production
+    minify: 'terser', // Use terser for better minification
     rollupOptions: {
       input: {
         main: path.resolve(__dirname, 'index.html'),
       },
+    },
+    terserOptions: {
+      compress: {
+        drop_console: true, // Remove console.log statements
+        drop_debugger: true, // Remove debugger statements
+      },
+      mangle: true, // Obfuscate variable names
     },
   },
 });

@@ -1,5 +1,4 @@
 import { Twitter } from 'lucide-react';
-
 export function Footer() {
   return (
     <footer className="bg-black/20 backdrop-blur-sm border-t border-white/10 mt-auto">
@@ -19,7 +18,6 @@ export function Footer() {
               Decentralized file sharing and token distribution on the Irys Network
             </p>
           </div>
-
           {/* Social Links */}
           <div className="flex items-center gap-6">
             <a
@@ -32,7 +30,6 @@ export function Footer() {
               <span className="text-sm font-medium">@iryshare</span>
             </a>
           </div>
-
           {/* Quick Links */}
           <div className="flex flex-col items-center md:items-end gap-2">
             <div className="text-white/40 text-xs text-center md:text-right">
@@ -41,7 +38,6 @@ export function Footer() {
             </div>
           </div>
         </div>
-
         {/* Bottom Bar */}
         <div className="border-t border-white/10 mt-6 pt-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-white/40">

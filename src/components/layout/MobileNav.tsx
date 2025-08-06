@@ -1,18 +1,13 @@
 import { Home, Folder, Users, Settings, Search, Send } from 'lucide-react';
 import { ProfileSearch } from '../ui/profile-search';
-
 import { useState } from 'react';
-
 interface MobileNavProps {
   activePage: string;
   onPageChange: (page: string) => void;
   address?: string;
 }
-
 export function MobileNav({ activePage, onPageChange, address }: MobileNavProps) {
   const [showProfileSearch, setShowProfileSearch] = useState(false);
-
-
   const navItems = [
     { id: 'home', label: 'Home', icon: Home, path: '/' },
     { id: 'myfiles', label: 'Files', icon: Folder, path: '/myfiles' },
@@ -20,7 +15,6 @@ export function MobileNav({ activePage, onPageChange, address }: MobileNavProps)
     { id: 'sendtokens', label: 'Send', icon: Send, path: '/sendtokens' },
     { id: 'profile', label: 'Profile', icon: Settings, path: '/profile' },
   ];
-
   return (
     <>
       {/* Mobile Bottom Navigation */}
@@ -29,7 +23,6 @@ export function MobileNav({ activePage, onPageChange, address }: MobileNavProps)
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activePage === item.id;
-            
             return (
               <button
                 key={item.id}
@@ -45,7 +38,6 @@ export function MobileNav({ activePage, onPageChange, address }: MobileNavProps)
               </button>
             );
           })}
-          
           {/* Search Button */}
           <button
             onClick={() => setShowProfileSearch(true)}
@@ -56,15 +48,12 @@ export function MobileNav({ activePage, onPageChange, address }: MobileNavProps)
           </button>
         </div>
       </div>
-
       {/* Profile Search Modal */}
       <ProfileSearch
         isOpen={showProfileSearch}
         onClose={() => setShowProfileSearch(false)}
         currentAddress={address}
       />
-
-
     </>
   );
 } 

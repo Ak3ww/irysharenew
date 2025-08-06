@@ -5,11 +5,9 @@ import { useAccount, useBalance } from 'wagmi';
 import { parseRecipients, calculateTotalAmount, disperseTokens, formatAmount, validateBalance, checkNetwork, getTransactionUrl } from '../../utils/disperse';
 import type { DisperseRecipient } from '../../utils/disperse';
 import { ethers } from 'ethers';
-
 interface SendTokensProps {
   onBack: () => void;
 }
-
 interface TransactionHistory {
   txHash: string;
   recipientCount: number;
@@ -21,13 +19,11 @@ interface TransactionHistory {
     amount: string;
   }>;
 }
-
 export function SendTokens({ onBack }: SendTokensProps) {
   const { address } = useAccount();
   const { data: balance } = useBalance({
     address: address as `0x${string}`,
   });
-
   const [recipientsInput, setRecipientsInput] = useState('');
   const [recipients, setRecipients] = useState<DisperseRecipient[]>([]);
   const [totalAmount, setTotalAmount] = useState<bigint>(0n);
@@ -37,7 +33,6 @@ export function SendTokens({ onBack }: SendTokensProps) {
   const [isCorrectNetwork, setIsCorrectNetwork] = useState<boolean | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [transactionHistory, setTransactionHistory] = useState<TransactionHistory[]>([]);
-
   // Parse recipients when input changes
   useEffect(() => {
     if (!recipientsInput.trim()) {
@@ -46,7 +41,6 @@ export function SendTokens({ onBack }: SendTokensProps) {
       setError('');
       return;
     }
-
     try {
       const parsedRecipients = parseRecipients(recipientsInput);
       setRecipients(parsedRecipients);
@@ -58,7 +52,6 @@ export function SendTokens({ onBack }: SendTokensProps) {
       setTotalAmount(0n);
     }
   }, [recipientsInput]);
-
   // Check network when component mounts or address changes
   useEffect(() => {
     const checkNetworkStatus = async () => {
@@ -66,13 +59,11 @@ export function SendTokens({ onBack }: SendTokensProps) {
         setIsCorrectNetwork(null);
         return;
       }
-
       try {
         if (!(window as { ethereum?: unknown }).ethereum) {
           setIsCorrectNetwork(false);
           return;
         }
-
         const provider = new ethers.BrowserProvider((window as { ethereum: unknown }).ethereum as ethers.Eip1193Provider);
         const signer = await provider.getSigner();
         const isCorrect = await checkNetwork(signer);
@@ -81,10 +72,8 @@ export function SendTokens({ onBack }: SendTokensProps) {
         setIsCorrectNetwork(false);
       }
     };
-
     checkNetworkStatus();
   }, [address]);
-
   // Load transaction history from localStorage
   useEffect(() => {
     if (address) {
@@ -92,43 +81,32 @@ export function SendTokens({ onBack }: SendTokensProps) {
       setTransactionHistory(history);
     }
   }, [address]);
-
-
-
   const handleSend = async () => {
     if (!address || !balance || recipients.length === 0) return;
-
     // Check balance
     if (!validateBalance(balance.value, totalAmount)) {
       setError('Insufficient balance');
       return;
     }
-
     setSending(true);
     setError('');
     setResult(null);
-
     try {
       // Get signer from window.ethereum
       if (!(window as { ethereum?: unknown }).ethereum) {
         throw new Error('No wallet found');
       }
-
       const provider = new ethers.BrowserProvider((window as { ethereum: unknown }).ethereum as ethers.Eip1193Provider);
       const signer = await provider.getSigner();
-
       // MetaMask will automatically switch to the correct network when the transaction is sent
       // No need to manually check or switch networks
-
       const disperseResult = await disperseTokens(recipients, signer);
-
       if (disperseResult.success) {
         setResult({
           success: true,
           message: `Successfully dispersed IRYS to ${recipients.length} recipients in one transaction!`,
           txHash: disperseResult.txHash
         });
-
         // Save to history
         const historyData: TransactionHistory = {
           txHash: disperseResult.txHash!,
@@ -140,11 +118,9 @@ export function SendTokens({ onBack }: SendTokensProps) {
             amount: r.amount
           }))
         };
-
         const updatedHistory = [historyData, ...transactionHistory];
         setTransactionHistory(updatedHistory);
         localStorage.setItem(`disperseHistory_${address}`, JSON.stringify(updatedHistory));
-
         // Reset form
         setRecipientsInput('');
         setRecipients([]);
@@ -164,11 +140,9 @@ export function SendTokens({ onBack }: SendTokensProps) {
       setSending(false);
     }
   };
-
   const formatBalance = (balance: bigint) => {
     return formatAmount(balance);
   };
-
   if (showHistory) {
     return (
       <div className="min-h-screen bg-black text-white p-4 sm:p-6">
@@ -191,7 +165,6 @@ export function SendTokens({ onBack }: SendTokensProps) {
             </div>
           </div>
         </div>
-
                  {/* History List */}
          <div className="max-w-4xl mx-auto">
            {transactionHistory.length > 0 ? (
@@ -214,7 +187,6 @@ export function SendTokens({ onBack }: SendTokensProps) {
                          <span className="text-[#67FFD4] font-bold">Recipients:</span>
                          <span className="text-white/80">{tx.recipientCount}</span>
                        </div>
-                       
                        {/* Detailed Recipients List */}
                        {tx.recipients && tx.recipients.length > 0 && (
                          <div className="mt-3">
@@ -268,7 +240,6 @@ export function SendTokens({ onBack }: SendTokensProps) {
       </div>
     );
   }
-
   return (
     <div className="min-h-screen bg-black text-white p-4 sm:p-6">
       {/* Header */}
@@ -297,7 +268,6 @@ export function SendTokens({ onBack }: SendTokensProps) {
           <span className="text-sm">History</span>
         </button>
       </div>
-
       <div className="max-w-4xl mx-auto">
         {/* Token Selection */}
         <div className="mb-6">
@@ -309,7 +279,6 @@ export function SendTokens({ onBack }: SendTokensProps) {
             <option value="CUSTOM" disabled>Custom Token (Coming Soon)</option>
           </select>
         </div>
-
         {/* Recipients Input */}
         <div className="mb-6">
           <label className="text-[#67FFD4] font-bold block mb-2 text-sm sm:text-base" style={{ fontFamily: 'Irys2' }}>
@@ -323,7 +292,6 @@ export function SendTokens({ onBack }: SendTokensProps) {
             disabled={sending}
           />
         </div>
-
         {/* Preview */}
         {recipients.length > 0 && (
           <div className="mb-6 p-4 sm:p-6 bg-white/5 border border-white/10 rounded-lg">
@@ -331,7 +299,6 @@ export function SendTokens({ onBack }: SendTokensProps) {
               <span className="text-[#67FFD4] font-bold text-sm sm:text-base">TOTAL RECIPIENTS: {recipients.length}</span>
               <span className="text-[#67FFD4] font-bold text-sm sm:text-base">TOTAL AMOUNT: {formatBalance(totalAmount)} IRYS</span>
             </div>
-            
             {/* Recipients List */}
             <div className="space-y-2 max-h-32 sm:max-h-40 overflow-y-auto">
               {recipients.map((recipient, index) => (
@@ -347,7 +314,6 @@ export function SendTokens({ onBack }: SendTokensProps) {
             </div>
           </div>
         )}
-
         {/* Network Status */}
         {isCorrectNetwork !== null && (
           <div className="mb-6 p-4 sm:p-6 bg-white/5 border border-white/10 rounded-lg">
@@ -369,7 +335,6 @@ export function SendTokens({ onBack }: SendTokensProps) {
              )}
           </div>
         )}
-
         {/* Balance Check */}
         {balance && (
           <div className="mb-6 p-4 sm:p-6 bg-white/5 border border-white/10 rounded-lg">
@@ -389,7 +354,6 @@ export function SendTokens({ onBack }: SendTokensProps) {
             )}
           </div>
         )}
-
         {/* Error Message */}
         {error && (
           <div className="mb-6 bg-red-500/20 border border-red-500/30 text-red-400 px-4 py-3 rounded-lg flex items-center gap-2">
@@ -397,7 +361,6 @@ export function SendTokens({ onBack }: SendTokensProps) {
             <span className="text-sm">{error}</span>
           </div>
         )}
-
         {/* Result Message */}
         {result && (
           <div className={`mb-6 px-4 py-3 rounded-lg flex items-center gap-2 ${
@@ -421,7 +384,6 @@ export function SendTokens({ onBack }: SendTokensProps) {
             </div>
           </div>
         )}
-
                  {/* Send Button */}
          <Button
            variant="irys"

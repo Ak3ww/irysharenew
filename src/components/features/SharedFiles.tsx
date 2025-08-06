@@ -2,12 +2,8 @@ import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { supabase } from '../../utils/supabase';
 import { downloadAndDecryptFromIrys } from '../../utils/aesIrys';
-
-
 export function SharedFiles() {
   const { address, isConnected } = useAccount();
-
-  
   // File management state
   const [sharedWithMe, setSharedWithMe] = useState<any[]>([]);
   const [selectedFile, setSelectedFile] = useState<any|null>(null);
@@ -18,21 +14,17 @@ export function SharedFiles() {
   const [previewProgress, setPreviewProgress] = useState(0);
   const [previewStage, setPreviewStage] = useState('');
   const [previewCache, setPreviewCache] = useState<Map<string, string>>(new Map());
-  
   // Search and filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [fileTypeFilter, setFileTypeFilter] = useState('all');
-
   // Fetch shared files
   useEffect(() => {
     const fetchSharedFiles = async () => {
       if (!address) return;
-      
       try {
         // Use the new get_user_files function to get shared files only
         const { data, error } = await supabase
           .rpc('get_user_files', { user_address: address.toLowerCase().trim() });
-        
         if (error) {
           console.error('Error fetching shared files:', error);
         } else {
@@ -45,10 +37,8 @@ export function SharedFiles() {
         setSharedWithMe([]);
       }
     };
-    
     fetchSharedFiles();
   }, [address]);
-
   // File type helpers
   function isImage(file: any) {
     const name = file?.file_name?.toLowerCase() || '';
@@ -58,14 +48,12 @@ export function SharedFiles() {
       contentType?.startsWith('image/')
     );
   }
-
   function isPDF(file: any) {
     const name = file?.file_name?.toLowerCase() || '';
     const contentType = getTagValue(Array.isArray(file.tags) ? file.tags : [], 'Content-Type');
     return name.endsWith('.pdf') || name.endsWith('.txt') || name.endsWith('.doc') || name.endsWith('.docx') || 
            contentType === 'application/pdf' || contentType === 'text/plain' || contentType?.startsWith('application/vnd.openxmlformats');
   }
-
   function isVideo(file: any) {
     const name = file?.file_name?.toLowerCase() || '';
     const contentType = getTagValue(Array.isArray(file.tags) ? file.tags : [], 'Content-Type');
@@ -74,7 +62,6 @@ export function SharedFiles() {
       contentType?.startsWith('video/')
     );
   }
-
   function isAudio(file: any) {
     const name = file?.file_name?.toLowerCase() || '';
     const contentType = getTagValue(Array.isArray(file.tags) ? file.tags : [], 'Content-Type');
@@ -83,16 +70,13 @@ export function SharedFiles() {
       contentType?.startsWith('audio/')
     );
   }
-
   function getTagValue(tags: any, tagName: string) {
     if (!Array.isArray(tags)) return null;
     const tag = tags.find((t: any) => t.name === tagName);
     return tag ? tag.value : null;
   }
-
   // Preview functions
   const previewEncryptedFile = async (file: any, cacheKey: string, onProgress: (progress: number, stage: string) => void) => {
-    console.log('Loading encrypted file...');
     onProgress(10, 'Decrypting file...');
     const decryptedData = await downloadAndDecryptFromIrys(
       file.file_url,
@@ -101,7 +85,6 @@ export function SharedFiles() {
         onProgress(10 + (progress * 0.8), `Decrypting file... ${Math.round(progress)}%`);
       }
     );
-    console.log('Decrypted file data received');
     onProgress(90, 'Creating preview...');
     const blob = new Blob([decryptedData], { type: file.file_type || 'application/octet-stream' });
     const blobUrl = URL.createObjectURL(blob);
@@ -109,39 +92,30 @@ export function SharedFiles() {
     onProgress(100, 'Complete!');
     return blobUrl;
   };
-
   const previewPublicFile = async (file: any, cacheKey: string, onProgress: (progress: number, stage: string) => void) => {
-    console.log('Loading public file...');
     onProgress(25, 'Loading file...');
     let txId = file.file_url;
-    
     // Improved URL parsing logic to avoid JSON parse errors with binary files
     try {
       // If it's already a direct URL, use it as is
       if (typeof txId === 'string' && (txId.startsWith('http://') || txId.startsWith('https://'))) {
-        console.log('Using direct URL:', txId);
       } else if (typeof txId === 'string' && txId.includes('{')) {
         // Only try to parse as JSON if it actually looks like JSON
         try {
           const parsed = JSON.parse(txId);
           txId = parsed.url || parsed.id || txId;
         } catch (e) {
-          console.log('JSON parsing failed, using original URL:', e);
         }
       } else if (typeof txId !== 'string') {
         // Convert non-string to string if needed
         txId = String(txId);
       }
     } catch (e) {
-      console.log('URL processing failed, using original:', e);
     }
-    
     // Clean up Irys gateway URL if needed
     if (typeof txId === 'string' && txId.startsWith('https://gateway.irys.xyz/')) {
       txId = txId.replace('https://gateway.irys.xyz/', '');
     }
-    
-    console.log('Fetching from gateway with txId:', txId);
     const res = await fetch(`https://gateway.irys.xyz/${txId}`);
     if (!res.ok) throw new Error(`Failed to fetch from Irys: ${res.status} ${res.statusText}`);
     const blob = await res.blob();
@@ -151,11 +125,9 @@ export function SharedFiles() {
     onProgress(100, 'Complete!');
     return blobUrl;
   };
-
   const handleFilePreview = async (file: any) => {
     setSelectedFile(file);
   };
-
   // Auto-load preview when file is selected
   useEffect(() => {
     if (!selectedFile) {
@@ -173,20 +145,16 @@ export function SharedFiles() {
     setPreviewBlobUrl('');
     setPreviewProgress(0);
     setPreviewStage('');
-    
     const loadFile = async () => {
       try {
         const cacheKey = `${selectedFile.id}-${selectedFile.updated_at || selectedFile.created_at}`;
-        
         // Check cache first
         const cachedUrl = previewCache.get(cacheKey);
         if (cachedUrl) {
-          console.log('Using cached preview');
           setPreviewBlobUrl(cachedUrl);
           setPreviewLoading(false);
           return;
         }
-        
         let blobUrl: string;
         if (selectedFile.is_encrypted) {
           blobUrl = await previewEncryptedFile(selectedFile, cacheKey, (progress, stage) => {
@@ -203,7 +171,6 @@ export function SharedFiles() {
             }
           });
         }
-        
         if (!cancelled) {
           setPreviewBlobUrl(blobUrl);
         }
@@ -218,14 +185,11 @@ export function SharedFiles() {
         }
       }
     };
-    
     loadFile();
-    
     return () => {
       cancelled = true;
     };
   }, [selectedFile, previewCache]);
-
   // Filter files based on search and type
   const filteredFiles = sharedWithMe.filter(file => {
     const matchesSearch = file.file_name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -236,7 +200,6 @@ export function SharedFiles() {
       (fileTypeFilter === 'audio' && isAudio(file));
     return matchesSearch && matchesType;
   });
-
   // Get file icon
   const getFileIcon = (file: any) => {
     if (isImage(file)) return '🖼️';
@@ -245,7 +208,6 @@ export function SharedFiles() {
     if (isAudio(file)) return '🎵';
     return '📁';
   };
-
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-white p-6">
       {/* Header */}
@@ -259,7 +221,6 @@ export function SharedFiles() {
               Files shared with you by other users
             </p>
           </div>
-          
           {/* Stats */}
           <div className="bg-[#1A1A1A] border border-[#67FFD4] rounded-xl p-4">
             <div className="text-[#67FFD4] font-bold mb-2" style={{ fontFamily: 'Irys1', letterSpacing: '0.1em' }}>
@@ -273,7 +234,6 @@ export function SharedFiles() {
             </div>
           </div>
         </div>
-
         {/* Search and Filter Bar */}
         <div className="bg-[#1A1A1A] border border-gray-700 rounded-xl p-6 mb-8">
           <div className="flex flex-col md:flex-row gap-4">
@@ -291,7 +251,6 @@ export function SharedFiles() {
                 style={{ fontFamily: 'Irys2' }}
               />
             </div>
-            
             {/* File Type Filter */}
             <div className="md:w-48">
               <label className="text-[#67FFD4] font-bold block mb-2" style={{ fontFamily: 'Irys1', letterSpacing: '0.1em' }}>
@@ -312,7 +271,6 @@ export function SharedFiles() {
             </div>
           </div>
         </div>
-
         {/* Files Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredFiles.map((file) => (
@@ -327,11 +285,9 @@ export function SharedFiles() {
                   <span className="text-[#67FFD4] text-sm" title="Encrypted file">🔒</span>
                 )}
               </div>
-              
               <h3 className="text-white font-bold mb-2 truncate" style={{ fontFamily: 'Irys2' }}>
                 {file.file_name}
               </h3>
-              
               <div className="text-sm text-gray-400 space-y-1">
                 <div>{(file.file_size_bytes / 1024 / 1024).toFixed(2)} MB</div>
                 <div>{new Date(file.created_at).toLocaleDateString()}</div>
@@ -342,7 +298,6 @@ export function SharedFiles() {
                   Shared by: {file.owner_address?.slice(0, 8)}...{file.owner_address?.slice(-6)}
                 </div>
               </div>
-              
               <div className="mt-4 pt-4 border-t border-gray-700">
                 <div className="text-xs text-gray-500">
                   Click to preview
@@ -351,7 +306,6 @@ export function SharedFiles() {
             </div>
           ))}
         </div>
-
         {/* Empty State */}
         {filteredFiles.length === 0 && (
           <div className="text-center py-16">
@@ -370,7 +324,6 @@ export function SharedFiles() {
           </div>
         )}
       </div>
-
       {/* File Preview Modal - Full Screen Transparent */}
       {selectedFile && (
         <div 
@@ -390,7 +343,6 @@ export function SharedFiles() {
                 ×
               </button>
             </div>
-            
             {/* Preview Area - Centered */}
             <div className="flex-1 flex items-center justify-center p-6">
                 {previewLoading ? (
@@ -588,7 +540,6 @@ export function SharedFiles() {
                   </div>
                 )}
               </div>
-
                 {/* File Info Panel - Below Preview */}
                 <div className="bg-[#1A1A1A]/80 backdrop-blur-sm p-6">
                   <div className="max-w-4xl mx-auto">
@@ -620,25 +571,21 @@ export function SharedFiles() {
                           {selectedFile.owner_address}
                         </button>
                       </div>
-                      
                       <div>
                         <span className="text-[#67FFD4] font-bold">Recipient:</span>
                         <span className="ml-2 text-white">
                           {selectedFile.recipient_address}
                         </span>
                       </div>
-                      
                       <div><span className="text-[#67FFD4] font-bold">Shared:</span> <span className="text-white">{new Date(selectedFile.created_at).toLocaleString()}</span></div>
                       <div><span className="text-[#67FFD4] font-bold">Size:</span> <span className="text-white">{(selectedFile.file_size_bytes / 1024 / 1024).toFixed(2)} MB</span></div>
                       <div><span className="text-[#67FFD4] font-bold">Type:</span> <span className="text-white">{selectedFile.is_encrypted ? '🔒 Encrypted' : '🌐 Public'}</span></div>
-                      
                       {selectedFile.is_encrypted && (
                         <div className="text-[#67FFD4] font-bold">
                           🔒 Encrypted File - Decrypted for viewing
                         </div>
                       )}
                     </div>
-
                     <div className="flex gap-3 justify-center mt-6">
                       <button
                         onClick={async () => {

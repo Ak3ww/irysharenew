@@ -6,19 +6,16 @@ import { parseRecipients, calculateTotalAmount, disperseTokens, formatAmount, va
 import type { DisperseRecipient } from '../../utils/disperse';
 import { ethers } from 'ethers';
 import { useToast } from '../../hooks/use-toast';
-
 interface DisperseProps {
   isOpen: boolean;
   onClose: () => void;
 }
-
 export function Disperse({ isOpen, onClose }: DisperseProps) {
   const { toast } = useToast();
   const { address } = useAccount();
   const { data: balance } = useBalance({
     address: address as `0x${string}`,
   });
-
   const [recipientsInput, setRecipientsInput] = useState('');
   const [recipients, setRecipients] = useState<DisperseRecipient[]>([]);
   const [totalAmount, setTotalAmount] = useState<bigint>(0n);
@@ -26,7 +23,6 @@ export function Disperse({ isOpen, onClose }: DisperseProps) {
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<{ success: boolean; message: string; txHash?: string } | null>(null);
   const [isCorrectNetwork, setIsCorrectNetwork] = useState<boolean | null>(null);
-
   // Parse recipients when input changes
   useEffect(() => {
     if (!recipientsInput.trim()) {
@@ -35,7 +31,6 @@ export function Disperse({ isOpen, onClose }: DisperseProps) {
       setError('');
       return;
     }
-
     try {
       const parsedRecipients = parseRecipients(recipientsInput);
       setRecipients(parsedRecipients);
@@ -47,7 +42,6 @@ export function Disperse({ isOpen, onClose }: DisperseProps) {
       setTotalAmount(0n);
     }
   }, [recipientsInput]);
-
   // Check network when component mounts or address changes
   useEffect(() => {
     const checkNetworkStatus = async () => {
@@ -55,13 +49,11 @@ export function Disperse({ isOpen, onClose }: DisperseProps) {
         setIsCorrectNetwork(null);
         return;
       }
-
       try {
         if (!(window as { ethereum?: unknown }).ethereum) {
           setIsCorrectNetwork(false);
           return;
         }
-
         const provider = new ethers.BrowserProvider((window as { ethereum: unknown }).ethereum as ethers.Eip1193Provider);
         const signer = await provider.getSigner();
         const isCorrect = await checkNetwork(signer);
@@ -70,13 +62,10 @@ export function Disperse({ isOpen, onClose }: DisperseProps) {
         setIsCorrectNetwork(false);
       }
     };
-
     checkNetworkStatus();
   }, [address]);
-
   const handleSend = async () => {
     if (!address || !balance || recipients.length === 0) return;
-
     // If user is on wrong network, try to switch
     if (isCorrectNetwork === false) {
       try {
@@ -109,41 +98,33 @@ export function Disperse({ isOpen, onClose }: DisperseProps) {
         }
       }
     }
-
     // Check balance
     if (!validateBalance(balance.value, totalAmount)) {
       setError('Insufficient balance');
       return;
     }
-
     setSending(true);
     setError('');
     setResult(null);
-
     try {
       // Get signer from window.ethereum
       if (!(window as { ethereum?: unknown }).ethereum) {
         throw new Error('No wallet found');
       }
-
       const provider = new ethers.BrowserProvider((window as { ethereum: unknown }).ethereum as ethers.Eip1193Provider);
       const signer = await provider.getSigner();
-
       // Check if we're on the correct network
       const isCorrectNetwork = await checkNetwork(signer);
       if (!isCorrectNetwork) {
         throw new Error('Please switch to Irys Testnet (Chain ID: 1270) to use the disperse function');
       }
-
       const disperseResult = await disperseTokens(recipients, signer);
-
       if (disperseResult.success) {
         setResult({
           success: true,
           message: `Successfully dispersed IRYS to ${recipients.length} recipients in one transaction!`,
           txHash: disperseResult.txHash
         });
-        
         // Show success toast with transaction link
         toast({
           title: "Disperse Successful!",
@@ -160,7 +141,6 @@ export function Disperse({ isOpen, onClose }: DisperseProps) {
             </a>
           ) : undefined,
         });
-        
         // Reset form
         setRecipientsInput('');
         setRecipients([]);
@@ -171,7 +151,6 @@ export function Disperse({ isOpen, onClose }: DisperseProps) {
           success: false,
           message: errorMessage
         });
-        
         // Show error toast
         toast({
           title: "Disperse Failed",
@@ -185,7 +164,6 @@ export function Disperse({ isOpen, onClose }: DisperseProps) {
         success: false,
         message: errorMessage
       });
-      
       // Show error toast
       toast({
         title: "Disperse Failed",
@@ -196,13 +174,10 @@ export function Disperse({ isOpen, onClose }: DisperseProps) {
       setSending(false);
     }
   };
-
   const formatBalance = (balance: bigint) => {
     return formatAmount(balance);
   };
-
   if (!isOpen) return null;
-
   return (
     <div 
       className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[9999] flex items-center justify-center p-2 sm:p-4"
@@ -233,7 +208,6 @@ export function Disperse({ isOpen, onClose }: DisperseProps) {
             <X size={18} className="sm:w-5 sm:h-5" />
           </button>
         </div>
-
         {/* Token Selection */}
         <div className="mb-4 sm:mb-6">
           <label className="text-[#67FFD4] font-bold block mb-2 text-sm sm:text-base" style={{ fontFamily: 'Irys2' }}>
@@ -244,7 +218,6 @@ export function Disperse({ isOpen, onClose }: DisperseProps) {
             <option value="CUSTOM" disabled>Custom Token (Coming Soon)</option>
           </select>
         </div>
-
         {/* Recipients Input */}
         <div className="mb-4 sm:mb-6">
           <label className="text-[#67FFD4] font-bold block mb-2 text-sm sm:text-base" style={{ fontFamily: 'Irys2' }}>
@@ -258,7 +231,6 @@ export function Disperse({ isOpen, onClose }: DisperseProps) {
             disabled={sending}
           />
         </div>
-
         {/* Preview */}
         {recipients.length > 0 && (
           <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-white/5 border border-white/10 rounded-lg">
@@ -266,7 +238,6 @@ export function Disperse({ isOpen, onClose }: DisperseProps) {
               <span className="text-[#67FFD4] font-bold text-xs sm:text-sm">TOTAL RECIPIENTS: {recipients.length}</span>
               <span className="text-[#67FFD4] font-bold text-xs sm:text-sm">TOTAL AMOUNT: {formatBalance(totalAmount)} IRYS</span>
             </div>
-            
             {/* Recipients List */}
             <div className="space-y-2 max-h-24 sm:max-h-32 overflow-y-auto">
               {recipients.map((recipient, index) => (
@@ -282,7 +253,6 @@ export function Disperse({ isOpen, onClose }: DisperseProps) {
             </div>
           </div>
         )}
-
         {/* Network Status */}
         {isCorrectNetwork !== null && (
           <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-white/5 border border-white/10 rounded-lg">
@@ -302,7 +272,6 @@ export function Disperse({ isOpen, onClose }: DisperseProps) {
             )}
           </div>
         )}
-
         {/* Balance Check */}
         {balance && (
           <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-white/5 border border-white/10 rounded-lg">
@@ -322,7 +291,6 @@ export function Disperse({ isOpen, onClose }: DisperseProps) {
             )}
           </div>
         )}
-
         {/* Error Message */}
         {error && (
           <div className="mb-4 sm:mb-6 bg-red-500/20 border border-red-500/30 text-red-400 px-3 sm:px-4 py-3 rounded-lg flex items-center gap-2">
@@ -330,7 +298,6 @@ export function Disperse({ isOpen, onClose }: DisperseProps) {
             <span className="text-xs sm:text-sm">{error}</span>
           </div>
         )}
-
         {/* Result Message */}
         {result && (
           <div className={`mb-4 sm:mb-6 px-3 sm:px-4 py-3 rounded-lg flex items-center gap-2 ${
@@ -354,7 +321,6 @@ export function Disperse({ isOpen, onClose }: DisperseProps) {
             </div>
           </div>
         )}
-
         {/* Send Button */}
         <Button
           variant="irys"

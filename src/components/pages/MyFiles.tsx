@@ -6,7 +6,6 @@ import { FileCard } from '../ui/file-card';
 import { FilePreview } from '../ui/file-preview';
 import { ShareModal } from '../ui/share-modal';
 import { downloadAndDecryptFromIrys } from '../../utils/aesIrys';
-
 interface FileData {
   id: string;
   owner_address: string;
@@ -25,63 +24,50 @@ interface FileData {
   recipient_username?: string;
   shared_at?: string;
 }
-
 interface MyFilesProps {
   address: string;
   isConnected: boolean;
   usernameSaved: boolean;
   refreshTrigger?: number;
 }
-
 export function MyFiles({ address, isConnected, usernameSaved, refreshTrigger = 0 }: MyFilesProps) {
   const [myFiles, setMyFiles] = useState<FileData[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [fileTypeFilter, setFileTypeFilter] = useState('all');
   const [loading, setLoading] = useState(false);
   const [realTimeStatus, setRealTimeStatus] = useState<'connecting' | 'connected' | 'disconnected'>('disconnected');
-  
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
-  
   // Preview state
   const [previewFile, setPreviewFile] = useState<FileData | null>(null);
   const [showSharePanelOnOpen, setShowSharePanelOnOpen] = useState(false);
   const [shareModalFile, setShareModalFile] = useState<FileData | null>(null);
-
   // Fetch my files
   const fetchFiles = async () => {
     if (!address || !isConnected || !usernameSaved) return;
-    
     setLoading(true);
     const normalizedAddress = address.toLowerCase().trim();
-    
     const { data, error } = await supabase.rpc('get_user_files', { user_address: normalizedAddress });
-      
     if (error) {
       setLoading(false);
       return;
     }
-    
     const ownedFiles = data?.filter((file: FileData) => file.is_owned) || [];
     // Sort by newest first
     ownedFiles.sort((a: FileData, b: FileData) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     setMyFiles(ownedFiles);
     setLoading(false);
   };
-
   // Initial fetch
   useEffect(() => {
     fetchFiles();
   }, [address, isConnected, usernameSaved, refreshTrigger]);
-
   // Real-time subscription for new files
   useEffect(() => {
     if (!address || !isConnected || !usernameSaved) return;
-
     setRealTimeStatus('connecting');
     const normalizedAddress = address.toLowerCase().trim();
-
     // Subscribe to changes in the files table for this user's files
     const filesSubscription = supabase
       .channel('my-files-changes')
@@ -105,7 +91,6 @@ export function MyFiles({ address, isConnected, usernameSaved, refreshTrigger = 
           setRealTimeStatus('disconnected');
         }
       });
-
     // Subscribe to changes in file_shares table (in case files are shared with this user)
     const sharesSubscription = supabase
       .channel('my-shares-changes')
@@ -125,31 +110,26 @@ export function MyFiles({ address, isConnected, usernameSaved, refreshTrigger = 
       .subscribe((status) => {
         // Handle subscription status silently
       });
-
     return () => {
       setRealTimeStatus('disconnected');
       supabase.removeChannel(filesSubscription);
       supabase.removeChannel(sharesSubscription);
     };
   }, [address, isConnected, usernameSaved]);
-
   // File type helpers
   const isImage = (file: FileData) => {
     const name = file?.file_name?.toLowerCase() || '';
     return name.endsWith('.png') || name.endsWith('.jpg') || name.endsWith('.jpeg') || 
            name.endsWith('.gif') || name.endsWith('.bmp') || name.endsWith('.webp');
   };
-
   const isPDF = (file: FileData) => {
     const name = file?.file_name?.toLowerCase() || '';
     return name.endsWith('.pdf');
   };
-
   const isVideo = (file: FileData) => {
     const name = file?.file_name?.toLowerCase() || '';
     return name.endsWith('.mp4') || name.endsWith('.webm') || name.endsWith('.mov') || name.endsWith('.avi');
   };
-
   const isAudio = (file: FileData) => {
     const name = file?.file_name?.toLowerCase() || '';
     const type = file?.file_type?.toLowerCase() || '';
@@ -157,7 +137,6 @@ export function MyFiles({ address, isConnected, usernameSaved, refreshTrigger = 
            name.endsWith('.m4a') || name.endsWith('.aac') || name.endsWith('.webm') || name.endsWith('.opus') ||
            type.startsWith('audio/');
   };
-
   // Filter files
   const filteredFiles = myFiles.filter(file => {
     const matchesSearch = file.file_name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -167,36 +146,29 @@ export function MyFiles({ address, isConnected, usernameSaved, refreshTrigger = 
       (fileTypeFilter === 'videos' && isVideo(file)) ||
       (fileTypeFilter === 'audio' && isAudio(file)) ||
       (fileTypeFilter === 'encrypted' && file.is_encrypted);
-    
     return matchesSearch && matchesType;
   });
-
   // Pagination logic
   const totalPages = Math.ceil(filteredFiles.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const paginatedFiles = filteredFiles.slice(startIndex, endIndex);
-
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, fileTypeFilter, itemsPerPage]);
-
   const refreshFiles = async () => {
     await fetchFiles();
   };
-
   // Preview file function
   const handlePreview = (file: FileData) => {
     setPreviewFile(file);
     setShowSharePanelOnOpen(false);
   };
-
   const closePreview = () => {
     setPreviewFile(null);
     setShowSharePanelOnOpen(false);
   };
-
   // Menu action handler
   const handleMenuAction = (action: string, file: FileData) => {
     switch (action) {
@@ -213,14 +185,12 @@ export function MyFiles({ address, isConnected, usernameSaved, refreshTrigger = 
         break;
     }
   };
-
   // Direct download function
   const handleDirectDownload = async (file: FileData) => {
     try {
       let fileData: ArrayBuffer;
       const fileName = file.file_name;
       const fileType = file.file_type || 'application/octet-stream';
-      
       if (file.is_encrypted) {
         // Decrypt and download encrypted file
         const decryptedData = await downloadAndDecryptFromIrys(file.file_url, address);
@@ -233,25 +203,21 @@ export function MyFiles({ address, isConnected, usernameSaved, refreshTrigger = 
         }
         fileData = await response.arrayBuffer();
       }
-      
       // Create blob and download
       const blob = new Blob([fileData], { type: fileType });
       const url = URL.createObjectURL(blob);
-      
       const link = document.createElement('a');
       link.href = url;
       link.download = fileName;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
       // Clean up
       URL.revokeObjectURL(url);
     } catch (error) {
       alert(`Download failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
-
   if (!isConnected || !usernameSaved) {
     return (
       <div className="min-h-screen bg-[#18191a] p-6">
@@ -263,7 +229,6 @@ export function MyFiles({ address, isConnected, usernameSaved, refreshTrigger = 
       </div>
     );
   }
-
   return (
     <div className="min-h-screen bg-[#18191a] p-6">
       <div className="max-w-7xl mx-auto">
@@ -303,7 +268,6 @@ export function MyFiles({ address, isConnected, usernameSaved, refreshTrigger = 
             </Button>
           </div>
         </div>
-          
         {/* Search and Filter */}
         <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 mb-6">
           <div className="flex flex-col lg:flex-row gap-4">
@@ -340,7 +304,6 @@ export function MyFiles({ address, isConnected, usernameSaved, refreshTrigger = 
             </div>
           </div>
         </div>
-
         {/* Pagination Controls */}
         {filteredFiles.length > 0 && (
           <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 mb-6">
@@ -371,7 +334,6 @@ export function MyFiles({ address, isConnected, usernameSaved, refreshTrigger = 
                   <span className="text-white/60 text-sm">per page</span>
                 </div>
               </div>
-              
               {/* Page Navigation */}
               {totalPages > 1 && (
                 <div className="flex items-center gap-2">
@@ -384,7 +346,6 @@ export function MyFiles({ address, isConnected, usernameSaved, refreshTrigger = 
                   >
                     Previous
                   </Button>
-                  
                   <div className="flex items-center gap-1">
                     {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                       let pageNum;
@@ -397,7 +358,6 @@ export function MyFiles({ address, isConnected, usernameSaved, refreshTrigger = 
                       } else {
                         pageNum = currentPage - 2 + i;
                       }
-                      
                       return (
                         <Button
                           key={pageNum}
@@ -415,7 +375,6 @@ export function MyFiles({ address, isConnected, usernameSaved, refreshTrigger = 
                       );
                     })}
                   </div>
-                  
                   <Button
                     variant="outline"
                     size="sm"
@@ -430,7 +389,6 @@ export function MyFiles({ address, isConnected, usernameSaved, refreshTrigger = 
             </div>
           </div>
         )}
-
         {/* Files Grid */}
         {loading ? (
           <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-12 text-center">
@@ -459,9 +417,6 @@ export function MyFiles({ address, isConnected, usernameSaved, refreshTrigger = 
             ))}
           </div>
         )}
-
-
-
         {/* Unified File Preview */}
         <FilePreview
           file={previewFile}
@@ -469,7 +424,6 @@ export function MyFiles({ address, isConnected, usernameSaved, refreshTrigger = 
           onClose={closePreview}
           showSharePanelOnOpen={showSharePanelOnOpen}
         />
-
         {/* Share Modal */}
         <ShareModal
           file={shareModalFile}

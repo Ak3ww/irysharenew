@@ -1,11 +1,9 @@
 // Analytics utility for tracking user events
-
 declare global {
   interface Window {
     gtag: (...args: any[]) => void;
   }
 }
-
 // Track custom events
 export function trackEvent(eventName: string, parameters?: Record<string, any>) {
   // Only send to Google Analytics, no console logging
@@ -13,7 +11,6 @@ export function trackEvent(eventName: string, parameters?: Record<string, any>) 
     window.gtag('event', eventName, parameters);
   }
 }
-
 // Track user registration
 export function trackUserRegistration(walletType: string, address: string) {
   trackEvent('user_registered', {
@@ -22,7 +19,6 @@ export function trackUserRegistration(walletType: string, address: string) {
     timestamp: new Date().toISOString()
   });
 }
-
 // Track file upload
 export function trackFileUpload(
   fileSize: number,
@@ -40,7 +36,6 @@ export function trackFileUpload(
     timestamp: new Date().toISOString()
   });
 }
-
 // Track credit purchase
 export function trackCreditPurchase(amount: number, currency: string) {
   trackEvent('credit_purchased', {
@@ -49,7 +44,6 @@ export function trackCreditPurchase(amount: number, currency: string) {
     timestamp: new Date().toISOString()
   });
 }
-
 // Track page views
 export function trackPageView(pageName: string) {
   trackEvent('page_view', {
@@ -57,7 +51,6 @@ export function trackPageView(pageName: string) {
     timestamp: new Date().toISOString()
   });
 }
-
 // Track user login
 export function trackUserLogin(walletType: string, address: string) {
   trackEvent('user_login', {
@@ -66,7 +59,6 @@ export function trackUserLogin(walletType: string, address: string) {
     timestamp: new Date().toISOString()
   });
 }
-
 // Track error events
 export function trackError(errorType: string, errorMessage: string, context?: string) {
   trackEvent('error_occurred', {
@@ -76,7 +68,6 @@ export function trackError(errorType: string, errorMessage: string, context?: st
     timestamp: new Date().toISOString()
   });
 }
-
 // Track feature usage
 export function trackFeatureUsage(featureName: string, parameters?: Record<string, any>) {
   trackEvent('feature_used', {

@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, UserPlus, Check, AlertCircle } from 'lucide-react';
 import { supabase } from '../../utils/supabase';
-import { updateFileAccessControl } from '../../utils/litIrys';
-
+import { updateFileAccessControl } from '../../utils/aesIrys';
 interface FileData {
   id: string;
   owner_address: string;
@@ -22,14 +21,12 @@ interface FileData {
   recipient_username?: string;
   shared_at?: string;
 }
-
 interface ShareModalProps {
   file: FileData | null;
   address: string;
   onClose: () => void;
   onRecipientAdded?: () => void;
 }
-
 export function ShareModal({ file, address, onClose, onRecipientAdded }: ShareModalProps) {
   const [newRecipientInput, setNewRecipientInput] = useState('');
   const [newRecipientValid, setNewRecipientValid] = useState(false);
@@ -39,12 +36,10 @@ export function ShareModal({ file, address, onClose, onRecipientAdded }: ShareMo
   const [addingRecipients, setAddingRecipients] = useState(false);
   const [addingRecipientsProgress, setAddingRecipientsProgress] = useState(0);
   const [addingRecipientsStage, setAddingRecipientsStage] = useState('');
-
   // Validate multiple recipients input
   useEffect(() => {
     const inputValue = newRecipientInput.trim();
     let cancelled = false;
-    
     async function validateRecipients() {
       if (!inputValue) {
         setNewRecipientValid(false);
@@ -52,13 +47,24 @@ export function ShareModal({ file, address, onClose, onRecipientAdded }: ShareMo
         setResolvedNewRecipients([]);
         return;
       }
-      
       setNewRecipientLoading(true);
-      
+      // Get existing recipients for this file to prevent duplicates
+      let existingRecipients: string[] = [];
+      if (file) {
+        try {
+          const { data: existingShares } = await supabase
+            .from('file_shares')
+            .select('recipient_address')
+            .eq('file_id', file.id);
+          existingRecipients = existingShares?.map(share => share.recipient_address.toLowerCase()) || [];
+        } catch (error) {
+          console.error('Error fetching existing shares:', error);
+        }
+      }
       const recipientList = inputValue.split(',').map(r => r.trim()).filter(r => r);
       const validRecipients: Array<{address: string, username?: string}> = [];
       const errors: string[] = [];
-
+      const seenAddresses = new Set<string>(); // Track duplicates within input
       for (const recipient of recipientList) {
         if (recipient.startsWith('@')) {
           // Username lookup - case insensitive
@@ -67,16 +73,31 @@ export function ShareModal({ file, address, onClose, onRecipientAdded }: ShareMo
             errors.push('Enter a username after @');
             continue;
           }
-          
           try {
             const { data } = await supabase
               .from('usernames')
               .select('address')
               .ilike('username', username)
               .single();
-            
             if (data) {
-              validRecipients.push({ address: data.address.toLowerCase(), username });
+              const addressLower = data.address.toLowerCase();
+              // Check if trying to share with self
+              if (address && addressLower === address.toLowerCase()) {
+                errors.push(`Cannot share with yourself (@${username})`);
+                continue;
+              }
+              // Check if already shared with this user
+              if (existingRecipients.includes(addressLower)) {
+                errors.push(`Already shared with @${username}`);
+                continue;
+              }
+              // Check for duplicates in current input
+              if (seenAddresses.has(addressLower)) {
+                errors.push(`Duplicate recipient: @${username}`);
+                continue;
+              }
+              seenAddresses.add(addressLower);
+              validRecipients.push({ address: addressLower, username });
             } else {
               errors.push(`User @${username} not found`);
             }
@@ -86,7 +107,22 @@ export function ShareModal({ file, address, onClose, onRecipientAdded }: ShareMo
         } else if (/^0x[a-f0-9]{40}$/.test(recipient.toLowerCase())) {
           // Direct address - validate format and check for username
           const addressLower = recipient.toLowerCase();
-          
+          // Check if trying to share with self
+          if (address && addressLower === address.toLowerCase()) {
+            errors.push(`Cannot share with yourself (${addressLower.slice(0, 6)}...${addressLower.slice(-4)})`);
+            continue;
+          }
+          // Check if already shared with this address
+          if (existingRecipients.includes(addressLower)) {
+            errors.push(`Already shared with ${addressLower.slice(0, 6)}...${addressLower.slice(-4)}`);
+            continue;
+          }
+          // Check for duplicates in current input
+          if (seenAddresses.has(addressLower)) {
+            errors.push(`Duplicate recipient: ${addressLower.slice(0, 6)}...${addressLower.slice(-4)}`);
+            continue;
+          }
+          seenAddresses.add(addressLower);
           // Optionally look up username for display
           try {
             const { data } = await supabase
@@ -94,7 +130,6 @@ export function ShareModal({ file, address, onClose, onRecipientAdded }: ShareMo
               .select('username')
               .eq('address', addressLower)
               .single();
-            
             if (data && data.username) {
               validRecipients.push({ address: addressLower, username: data.username });
             } else {
@@ -108,65 +143,46 @@ export function ShareModal({ file, address, onClose, onRecipientAdded }: ShareMo
           errors.push(`Invalid recipient: ${recipient} (use @username or 0x address)`);
         }
       }
-
       if (cancelled) return;
-      
       setResolvedNewRecipients(validRecipients);
-      setNewRecipientValid(validRecipients.length > 0);
+      setNewRecipientValid(validRecipients.length > 0 && errors.length === 0);
       setNewRecipientError(errors.join(', '));
       setNewRecipientLoading(false);
     }
-    
     validateRecipients();
     return () => { cancelled = true; };
-  }, [newRecipientInput]);
-
+  }, [newRecipientInput, file, address]);
   // Handle adding new recipients
   const handleAddRecipients = async () => {
     if (!file || !resolvedNewRecipients.length || !address) return;
-    
     try {
       setAddingRecipients(true);
       setAddingRecipientsProgress(0);
       setAddingRecipientsStage('Preparing to add recipients...');
-      
       // Get current recipients for this file
       const { data: existingShares, error: sharesError } = await supabase
         .from('file_shares')
         .select('recipient_address')
         .eq('file_id', file.id);
-
       if (sharesError) {
         console.error('Error fetching existing shares:', sharesError);
         throw new Error('Failed to fetch existing file shares');
       }
-
       const currentRecipients = existingShares?.map(share => share.recipient_address) || [];
       const newRecipientAddresses = resolvedNewRecipients.map(r => r.address.toLowerCase());
       const allRecipients = [...new Set([...currentRecipients, ...newRecipientAddresses])];
-
-      console.log('Current recipients:', currentRecipients);
-      console.log('New recipients:', newRecipientAddresses);
-      console.log('All recipients after adding:', allRecipients);
-
       setAddingRecipientsProgress(25);
       setAddingRecipientsStage('Preparing access control update...');
-
       setAddingRecipientsProgress(55);
       setAddingRecipientsStage('Updating access control conditions...');
-
       // Update access control conditions without re-uploading the file
       const newFileUrl = await updateFileAccessControl(
         file.file_url,
         allRecipients,
         file.owner_address
       );
-
-      console.log('Access control updated, new URL:', newFileUrl);
-      
       setAddingRecipientsProgress(85);
       setAddingRecipientsStage('Updating database...');
-      
       // Update the file URL in the files table
       const { error: updateFileError } = await supabase
         .from('files')
@@ -175,12 +191,10 @@ export function ShareModal({ file, address, onClose, onRecipientAdded }: ShareMo
           updated_at: new Date().toISOString()
         })
         .eq('id', file.id);
-
       if (updateFileError) {
         console.error('Error updating file URL:', updateFileError);
         throw new Error('Failed to update file URL in database');
       }
-
       // Add all new recipients to file_shares table
       for (const recipient of resolvedNewRecipients) {
         const { error: insertError } = await supabase
@@ -190,22 +204,16 @@ export function ShareModal({ file, address, onClose, onRecipientAdded }: ShareMo
             recipient_address: recipient.address.toLowerCase(),
             recipient_username: recipient.username
           });
-        
         if (insertError) {
           throw new Error(`Failed to add recipient ${recipient.address} to file shares`);
         }
       }
-      
-      console.log('Successfully added recipients:', resolvedNewRecipients.map(r => r.address));
-      
       setAddingRecipientsProgress(100);
       setAddingRecipientsStage(`${resolvedNewRecipients.length} recipient(s) added successfully!`);
-      
       // Call callback if provided
       if (onRecipientAdded) {
         onRecipientAdded();
       }
-      
       // Reset form
       setTimeout(() => {
         setNewRecipientInput('');
@@ -216,7 +224,6 @@ export function ShareModal({ file, address, onClose, onRecipientAdded }: ShareMo
         setAddingRecipientsProgress(0);
         setAddingRecipientsStage('');
       }, 2000);
-      
     } catch (error) {
       console.error('Error adding recipients:', error);
       alert(`Failed to add recipients: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -225,7 +232,6 @@ export function ShareModal({ file, address, onClose, onRecipientAdded }: ShareMo
       setAddingRecipientsStage('');
     }
   };
-
   // ESC key handler for closing modal
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -233,22 +239,18 @@ export function ShareModal({ file, address, onClose, onRecipientAdded }: ShareMo
         onClose();
       }
     };
-
     if (file) {
       document.addEventListener('keydown', handleEsc);
       return () => document.removeEventListener('keydown', handleEsc);
     }
   }, [file, onClose]);
-
   // Click outside handler
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
       onClose();
     }
   };
-
   if (!file) return null;
-
   return createPortal(
     <div 
       className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-[99999] p-4"
@@ -279,7 +281,6 @@ export function ShareModal({ file, address, onClose, onRecipientAdded }: ShareMo
             <X size={20} />
           </button>
         </div>
-
         {/* File Info */}
         <div className="mb-6 p-4 bg-white/5 rounded-lg">
           <p className="text-white font-medium text-sm mb-1 truncate max-w-full" title={file.file_name}>
@@ -289,7 +290,6 @@ export function ShareModal({ file, address, onClose, onRecipientAdded }: ShareMo
             {file.is_encrypted ? 'Encrypted file' : 'Public file'}
           </p>
         </div>
-
         {/* Recipient Input */}
         <div className="space-y-4">
           <div className="space-y-2">
@@ -312,7 +312,6 @@ export function ShareModal({ file, address, onClose, onRecipientAdded }: ShareMo
                 </div>
               )}
             </div>
-            
             {/* Validation Messages */}
             {newRecipientError && (
               <div className="flex items-center gap-2 text-red-400 text-sm">
@@ -320,7 +319,6 @@ export function ShareModal({ file, address, onClose, onRecipientAdded }: ShareMo
                 {newRecipientError}
               </div>
             )}
-            
             {resolvedNewRecipients.length > 0 && (
               <div className="bg-emerald-500/20 border border-emerald-500/30 rounded-lg p-3">
                 <div className="text-emerald-400 text-sm mb-2">
@@ -341,7 +339,6 @@ export function ShareModal({ file, address, onClose, onRecipientAdded }: ShareMo
               </div>
             )}
           </div>
-          
           {/* Progress Bar */}
           {addingRecipients && (
             <div className="space-y-2">
@@ -354,7 +351,6 @@ export function ShareModal({ file, address, onClose, onRecipientAdded }: ShareMo
               </div>
             </div>
           )}
-          
           {/* Add Button */}
           <button
             onClick={handleAddRecipients}
