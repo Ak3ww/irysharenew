@@ -16,7 +16,7 @@ const grantUserAllowance = async (userAddress) => {
     throw new Error("Invalid PRIVATE_KEY format");
   }
   
-  const amountToApproveInEth = "0.1"; // Just approve user - system will pay for uploads
+  const amountToApproveInEth = "0.5"; // Increased to 0.5 ETH for more upload capacity
   console.log('💰 Approving user for uploads');
   console.log('🎯 Target user address:', userAddress);
   
