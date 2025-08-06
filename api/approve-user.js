@@ -10,12 +10,6 @@ const grantUserAllowance = async (userAddress) => {
     throw new Error("Server is missing PRIVATE_KEY in environment variables");
   }
   
-  // Validate the private key format
-  if (!process.env.PRIVATE_KEY.startsWith('0x') && process.env.PRIVATE_KEY.length !== 64) {
-    console.error('❌ PRIVATE_KEY format is invalid');
-    throw new Error("Invalid PRIVATE_KEY format");
-  }
-  
   const amountToApproveInEth = "0.5"; // 0.5 ETH approval for uploads
   console.log('💰 Approving user for uploads');
   console.log('🎯 Target user address:', userAddress);
@@ -81,12 +75,6 @@ export default async function handler(req, res) {
     if (!userAddress) {
       console.error('❌ Missing userAddress in request body');
       return res.status(400).json({ error: "userAddress is required." });
-    }
-
-    // Validate address format
-    if (!userAddress.startsWith('0x') || userAddress.length !== 42) {
-      console.error('❌ Invalid address format:', userAddress);
-      return res.status(400).json({ error: "Invalid address format." });
     }
 
     if (!process.env.PRIVATE_KEY) {
