@@ -52,15 +52,10 @@ export function ProfileWidget({ address, isConnected, usernameSaved, isMobile = 
       try {
         const normalizedAddress = address.toLowerCase().trim();
         // Fetch user profile and storage info
-        const [profileResult, storageResult, filesResult] = await Promise.all([
+        const [profileResult, filesResult] = await Promise.all([
           supabase
             .from('usernames')
             .select('username, profile_avatar')
-            .eq('address', normalizedAddress)
-            .single(),
-          supabase
-            .from('user_storage')
-            .select('used_bytes')
             .eq('address', normalizedAddress)
             .single(),
           supabase
@@ -70,7 +65,7 @@ export function ProfileWidget({ address, isConnected, usernameSaved, isMobile = 
         ]);
         const username = profileResult.data?.username || 'Unknown';
         const profileAvatar = profileResult.data?.profile_avatar || '';
-        const usedBytes = storageResult.data?.used_bytes || 0;
+        const usedBytes = 0; // Storage tracking temporarily disabled
         const totalFiles = filesResult.count || 0;
         const totalStorage = 12 * 1024 * 1024 * 1024; // 12GB
         setStats({

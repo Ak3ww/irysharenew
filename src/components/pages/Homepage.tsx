@@ -243,51 +243,8 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
         setUploadProgress(100);
         setUploadStage('Upload complete!');
       }
-      // Update storage usage with proper error handling
-      try {
-        // First, try to get current storage or create if doesn't exist
-        const { data: currentStorage, error: storageError } = await supabase
-          .from('user_storage')
-          .select('used_bytes')
-          .eq('address', address.toLowerCase().trim())
-          .single();
-        if (storageError && storageError.code === 'PGRST116') {
-          // User doesn't exist in storage table, create new record
-          const { error: insertError } = await supabase
-            .from('user_storage')
-            .insert({
-              address: address.toLowerCase().trim(),
-              used_bytes: file.size,
-              total_bytes: 12884901888, // ~12GB default
-              last_updated: new Date().toISOString()
-            });
-          if (insertError) {
-            console.error('Failed to create user storage record:', insertError);
-            // Continue with upload even if storage tracking fails
-          }
-        } else if (storageError) {
-          console.error('Error checking user storage:', storageError);
-          // Continue with upload even if storage tracking fails
-        } else {
-          // User exists, update storage usage
-          const currentUsage = currentStorage?.used_bytes || 0;
-          const newUsage = currentUsage + file.size;
-          const { error: updateError } = await supabase
-            .from('user_storage')
-            .update({
-              used_bytes: newUsage,
-              last_updated: new Date().toISOString()
-            })
-            .eq('address', address.toLowerCase().trim());
-          if (updateError) {
-            console.error('Failed to update user storage:', updateError);
-            // Continue with upload even if storage tracking fails
-          }
-        }
-      } catch (storageError) {
-        console.error('Storage tracking error:', storageError);
-        // Continue with upload even if storage tracking fails
-      }
+      // Storage tracking temporarily disabled to fix 406 errors
+      // TODO: Re-enable when user_storage table is properly configured
       // Reset form
       setFile(null);
       setShareRecipients('');
