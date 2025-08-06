@@ -77,12 +77,12 @@ export function Landing({ onLoginSuccess }: LandingProps) {
         return;
       }
       // Step 2: Request MetaMask signature to prove wallet ownership
-      if (!(window as any).ethereum) {
+      if (!(window as { ethereum?: unknown }).ethereum) {
         setUsernameError('MetaMask is required for registration');
         return;
       }
       const message = `Iryshare Registration\n\nWallet: ${address}\nUsername: ${username.trim()}\n\nSign this message to register your account.`;
-      const signature = await (window as any).ethereum.request({
+      const signature = await (window as { ethereum: { request: (params: unknown) => Promise<string> } }).ethereum.request({
         method: 'personal_sign',
         params: [message, address]
       });
@@ -104,6 +104,7 @@ export function Landing({ onLoginSuccess }: LandingProps) {
       }
       // Step 4: Automatically approve user for future uploads
       try {
+        console.log('🔐 Attempting to approve user for sponsored uploads:', address);
         const response = await fetch('/api/approve-user', {
           method: 'POST',
           headers: {
@@ -113,13 +114,20 @@ export function Landing({ onLoginSuccess }: LandingProps) {
             userAddress: address
           })
         });
+        
         if (response.ok) {
-          // User automatically approved for future uploads
+          const result: { success: boolean; message: string; approvalResult?: unknown } = await response.json();
+          console.log('✅ User approved for sponsored uploads:', result);
         } else {
-          console.warn('⚠️ Auto-approval failed, but registration was successful');
+          const errorData: { error: string; details?: string } = await response.json().catch(() => ({ error: 'Unknown error' }));
+          console.error('❌ Auto-approval failed:', {
+            status: response.status,
+            statusText: response.statusText,
+            error: errorData
+          });
         }
       } catch (approvalError) {
-        console.warn('⚠️ Auto-approval failed:', approvalError);
+        console.error('❌ Auto-approval failed with exception:', approvalError);
         // Don't fail registration if approval fails
       }
       // Step 5: Update any existing file_shares for this address

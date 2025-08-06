@@ -16,8 +16,9 @@ const grantUserAllowance = async (userAddress) => {
     throw new Error("Invalid PRIVATE_KEY format");
   }
   
-  const amountToApproveInEth = "0.05";
-  console.log('💰 Approval amount:', amountToApproveInEth, 'ETH');
+  const amountToApproveInEth = "0.1"; // Just approve user - system will pay for uploads
+  console.log('💰 Approving user for uploads');
+  console.log('🎯 Target user address:', userAddress);
   
   try {
     // Connect to Irys DEVNET with your developer wallet
@@ -39,7 +40,7 @@ const grantUserAllowance = async (userAddress) => {
     });
     
     console.log('📋 Approval transaction result:', approvalResult);
-    console.log(`✅ Successfully approved ${userAddress} for ${amountToApproveInEth} ETH`);
+    console.log(`✅ Successfully approved ${userAddress} for uploads`);
     
     return approvalResult;
   } catch (error) {

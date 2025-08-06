@@ -23,8 +23,13 @@ export async function uploadFile(
   file: File,
   tags: { name: string; value: string }[] = []
 ) {
-  // Smart upload strategy based on file size
   const fileSizeMB = file.size / 1024 / 1024;
+  
+  // 25MB limit for uploads
+  if (fileSizeMB > 25) {
+    throw new Error(`File too large (${fileSizeMB.toFixed(2)}MB). Maximum supported size is 25MB.`);
+  }
+  
   // Use original file type for public files, fallback to octet-stream if needed
   const contentType = file.type || "application/octet-stream";
   const safeTags = [
@@ -32,33 +37,14 @@ export async function uploadFile(
     { name: "App-Name", value: "IryShare" },
     { name: "File-Name", value: file.name },
   ];
-  // Strategy:
-  // - Small files (< 10MB): Regular upload (fastest, most reliable)
-  // - Large files (≥ 10MB): Chunked upload (required for large files)
-  let uploadStrategy = fileSizeMB >= 10 ? 'chunked' : 'regular';
-  if (uploadStrategy === 'chunked') {
-    try {
-      // Recreate chunked uploader for each transaction (per Irys docs)
-      let uploader = irysUploader.uploader.chunkedUploader;
-      // Configure chunked uploader settings - use proper chunk size within allowed range
-      uploader.setBatchSize(5); // Default batch size
-      uploader.setChunkSize(500000); // 500KB chunks (minimum allowed by Irys)
-  const dataToUpload = Buffer.from(await file.arrayBuffer());
-      const transactionOptions = {
-        tags: safeTags,
-    upload: {
-      paidBy: "0xebe5e0c25a5f7ea6b404a74b6bb78318cc295148",
-    },
-  };
-      const receipt = await uploader.uploadData(dataToUpload, transactionOptions);
-      return `https://gateway.irys.xyz/${receipt.data.id}`;
-    } catch (chunkedError) {
-      throw new Error(`Chunked upload failed for large file (${fileSizeMB.toFixed(2)}MB). This file may be too large for the current network conditions.`);
-    }
-  } else {
-    // Regular upload for small files
+  
+  // Direct upload for all files (no chunked upload)
+  try {
     const dataToUpload = Buffer.from(await file.arrayBuffer());
     const receipt = await irysUploader.upload(dataToUpload, { tags: safeTags });
     return `https://gateway.irys.xyz/${receipt.id}`;
+  } catch (uploadError) {
+    const errorMessage = uploadError instanceof Error ? uploadError.message : 'Unknown error';
+    throw new Error(`Upload failed for file (${fileSizeMB.toFixed(2)}MB). Error: ${errorMessage}`);
   }
 }
