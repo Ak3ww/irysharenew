@@ -102,53 +102,30 @@ export function Landing({ onLoginSuccess }: LandingProps) {
         setUsernameError('Error saving username');
         return;
       }
-      // Step 4: Automatically approve user for future uploads with retry logic
-      const approveUser = async (retries = 3): Promise<boolean> => {
-        for (let attempt = 1; attempt <= retries; attempt++) {
-          try {
-            console.log(`🔐 Attempting to approve user (attempt ${attempt}/${retries}):`, address);
-            const response = await fetch('/api/approve-user', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                userAddress: address
-              })
-            });
-            
-            if (response.ok) {
-              const result: { success: boolean; message: string; approvalResult?: unknown } = await response.json();
-              console.log('✅ User approved for sponsored uploads:', result);
-              return true;
-            } else {
-              const errorData: { error: string; details?: string } = await response.json().catch(() => ({ error: 'Unknown error' }));
-              console.error(`❌ Auto-approval failed (attempt ${attempt}):`, {
-                status: response.status,
-                statusText: response.statusText,
-                error: errorData
-              });
-              
-              if (attempt < retries) {
-                console.log(`⏳ Waiting 2 seconds before retry...`);
-                await new Promise(resolve => setTimeout(resolve, 2000));
-              }
-            }
-          } catch (approvalError) {
-            console.error(`❌ Auto-approval failed with exception (attempt ${attempt}):`, approvalError);
-            if (attempt < retries) {
-              console.log(`⏳ Waiting 2 seconds before retry...`);
-              await new Promise(resolve => setTimeout(resolve, 2000));
-            }
+                                       // Step 4: Automatically approve user for future uploads
+        try {
+          console.log(`🔐 Approving user for sponsored uploads:`, address);
+          const apiUrl = import.meta.env.DEV ? 'http://localhost:3001/api/approve-user' : '/api/approve-user';
+          const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              userAddress: address
+            })
+          });
+          
+          if (response.ok) {
+            const result = await response.json();
+            console.log('✅ User approved for sponsored uploads:', result);
+          } else {
+            console.warn('⚠️ User registration completed but approval failed - user may have limited upload capacity');
           }
+        } catch (approvalError) {
+          console.error('❌ Auto-approval failed:', approvalError);
+          console.warn('⚠️ User registration completed but approval failed - user may have limited upload capacity');
         }
-        return false;
-      };
-      
-      const approvalSuccess = await approveUser();
-      if (!approvalSuccess) {
-        console.warn('⚠️ User registration completed but approval failed - user may have limited upload capacity');
-      }
       // Step 5: Update any existing file_shares for this address
       // This is handled automatically by the database trigger
       // Track user registration

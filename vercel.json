@@ -1,11 +1,10 @@
 {
-  "functions": {
-    "api/gasless-upload.js": {
-      "maxDuration": 60,
-      "memory": 1024
-    }
-  },
   "env": {
     "NODE_ENV": "production"
+  },
+  "functions": {
+    "api/approve-user.js": {
+      "maxDuration": 30
+    }
   }
 } 

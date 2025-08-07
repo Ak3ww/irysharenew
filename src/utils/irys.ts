@@ -7,9 +7,6 @@ import { Buffer } from "buffer";
 // This helper type correctly gets the type of the WebUploader instance.
 type IrysUploader = Awaited<ReturnType<typeof getIrysUploader>>;
 
-// Users are approved via /api/approve-user and then use their own wallet
-// This is the simple and secure approach - no private keys in client code
-
 export async function getIrysUploader() {
   if (!(window as any).ethereum) {
     throw new Error("MetaMask not found. Please install a browser wallet.");
@@ -27,6 +24,7 @@ export async function getIrysUploader() {
 export async function uploadFile(
   irysUploader: IrysUploader,
   file: File,
+  userAddress: string,
   tags: { name: string; value: string }[] = []
 ) {
   const fileSizeMB = file.size / 1024 / 1024;
@@ -44,10 +42,38 @@ export async function uploadFile(
     { name: "File-Name", value: file.name },
   ];
   
-  // Direct upload for all files (no chunked upload)
+  // Ensure user is approved for sponsored uploads
+  try {
+    console.log(`🔐 Checking approval for user: ${userAddress}`);
+    const apiUrl = import.meta.env.DEV ? 'http://localhost:3001/api/approve-user' : '/api/approve-user';
+    const approvalResponse = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        userAddress: userAddress
+      })
+    });
+    
+    if (!approvalResponse.ok) {
+      throw new Error('User approval failed - please try again');
+    }
+    
+    console.log(`✅ User approved for sponsored uploads`);
+  } catch (approvalError) {
+    console.error('Approval error:', approvalError);
+    throw new Error('Failed to get upload approval. Please try again.');
+  }
+  
+  // Upload with approval system (user just signs, no gas fees)
   try {
     const dataToUpload = Buffer.from(await file.arrayBuffer());
-    const receipt = await irysUploader.upload(dataToUpload, { tags: safeTags });
+    const transactionOptions = {
+      tags: safeTags,
+      // No paidBy - will use approval system
+    };
+    const receipt = await irysUploader.upload(dataToUpload, transactionOptions);
     return `https://gateway.irys.xyz/${receipt.id}`;
   } catch (uploadError) {
     const errorMessage = uploadError instanceof Error ? uploadError.message : 'Unknown error';
