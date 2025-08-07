@@ -3,7 +3,7 @@ import { Button } from '../ui/button';
 import { Save, Eye, EyeOff, User, X, Info, CheckCircle } from 'lucide-react';
 import { FileInput } from '../ui/file-input';
 import { supabase } from '../../utils/supabase';
-import { uploadFileGasless } from '../../utils/gasless-upload';
+import { uploadFile } from '../../utils/irys';
 
 import Cropper from 'react-easy-crop';
 interface ProfileSettingsProps {
@@ -316,18 +316,10 @@ export function ProfileSettings({ address, isConnected, usernameSaved, onBack }:
     setError('');
     try {
       // Get Irys uploader
-                  // Upload avatar via gasless system
-            const result = await uploadFileGasless({
-              file,
-              userAddress: address,
-              uploadType: 'public'
-            });
-            
-            if (!result.success) {
-              throw new Error(result.error || 'Avatar upload failed');
-            }
-            
-            const avatarUrl = result.fileUrl!;
+                  const { getIrysUploader } = await import('../../utils/irys');
+            const irysUploader = await getIrysUploader();
+            // Upload avatar to Irys
+            const avatarUrl = await uploadFile(irysUploader, file, address);
       setTempAvatarUrl(avatarUrl);
       setAvatarUploaded(true);
       setAvatarFile(null);
