@@ -860,19 +860,8 @@ export function LinktreeProvider({ children }: { children: ReactNode }) {
         } else {
           console.log('✅ DEBUG: Avatar saved to database successfully');
           
-          // Force refresh profile data from database to ensure consistency
-          console.log('🔄 DEBUG: Refreshing profile data from database...');
-          try {
-            const mainProfile = await fetchMainAppProfile();
-            if (mainProfile && mainProfile.linktree_avatar) {
-              console.log('✅ DEBUG: Refreshing profile data from database:', mainProfile.linktree_avatar);
-              setLinktreeAvatar(mainProfile.linktree_avatar);
-            } else {
-              console.log('⚠️ DEBUG: No profile data returned from fetchMainAppProfile');
-            }
-          } catch (refreshError) {
-            console.error('❌ DEBUG: Error refreshing profile data:', refreshError);
-          }
+          // Avatar already saved to database, no need to refresh and override local state
+          console.log('✅ DEBUG: Avatar saved to database successfully');
         }
       } catch (dbError) {
         console.error('❌ DEBUG: Error saving avatar to database:', dbError);
@@ -883,12 +872,7 @@ export function LinktreeProvider({ children }: { children: ReactNode }) {
        // Dispatch custom event to notify other components about Linktree avatar update
        window.dispatchEvent(new CustomEvent('linktree-avatar-updated'));
        
-       // Force a final state update to ensure UI re-renders
-       setTimeout(() => {
-         setLinktreeAvatar(publicUrl);
-         setImage(publicUrl);
-         console.log('🔄 DEBUG: Final state update triggered for UI refresh');
-       }, 100);
+       // Avatar update complete, no additional state updates needed
       
       return publicUrl;
     } catch (error) {
