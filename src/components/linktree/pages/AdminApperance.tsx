@@ -321,7 +321,7 @@ export default function AdminApperance() {
     } catch (error) {
       console.error('❌ DEBUG: Error saving cropped avatar:', error);
       console.error('❌ DEBUG: Error details:', {
-        message: error?.message,
+        message: error && typeof error === 'object' && 'message' in error ? (error as Error).message : 'No message available',
         type: typeof error
       });
       alert('Failed to save cropped avatar. Please try again.');
