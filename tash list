@@ -1,0 +1,5 @@
+[33m441e7d5[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m feat: beta launch - sponsored upload system working - All features functional - Ready for production use
+[33m5bc870c[m Merge changes
+[33m6146ccc[m cleanup: remove old gasless-upload files and update dependencies - Remove api/gasless-upload.js and src/utils/gasless-upload.ts - Update Homepage.tsx and ProfileSettings.tsx to use new upload system - Add development setup files and documentation
+[33mefe3ad6[m Create .env
+[33m70e0c8d[m feat: implement sponsored upload system with Vercel API - Add approve-user.js API for user approval - Update irys.ts to use approval system - Update Landing.tsx to call approval API - Configure vercel.json for API deployment - Remove direct paidBy usage, use approval system instead

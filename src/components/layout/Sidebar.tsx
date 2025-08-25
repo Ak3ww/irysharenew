@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ChevronRight, Home, Folder, Users, Settings, Search, Send } from 'lucide-react';
+import { ChevronRight, Home, Folder, Users, Settings, Search, Send, Link } from 'lucide-react';
 import { DisconnectButton } from '../ui/disconnect-button';
 import { supabase } from '../../utils/supabase';
 import { ProfileSearch } from '../ui/profile-search';
@@ -77,7 +77,7 @@ export function Sidebar({ activePage, onPageChange, address, isCollapsed = false
     if (isCollapsed) {
       return (
         <>
-          <div className="fixed bottom-0 left-0 right-0 bg-[#1A1A1A] border-t border-gray-800 z-50">
+          <div className="fixed bottom-0 left-0 right-0 bg-black border-t border-gray-800 z-50">
         <div className="flex items-center justify-around py-3">
           <button
             onClick={() => onPageChange('home')}
@@ -158,9 +158,9 @@ export function Sidebar({ activePage, onPageChange, address, isCollapsed = false
   }
      // Full sidebar
    return (
-           <div 
-        className="fixed left-0 top-0 w-[280px] bg-[#18191a] min-h-screen flex flex-col border-r border-gray-800 z-40"
-      >
+    <div 
+      className="fixed left-0 top-0 w-[280px] bg-black min-h-screen flex flex-col border-r border-gray-800 z-40"
+    >
       <div className="flex items-center justify-between p-4 border-b border-gray-800">
         <div className="flex items-center gap-1">
           <img 
@@ -214,6 +214,12 @@ export function Sidebar({ activePage, onPageChange, address, isCollapsed = false
            isActive={false}
            onClick={() => onPageChange('sendtokens')}
          />
+        <SidebarItem
+          icon={<Link size={20} />}
+          label="LINKTREE"
+          isActive={activePage === 'linktree'}
+          onClick={() => onPageChange('linktree')}
+        />
                 <SidebarItem
           icon={<Settings size={20} />}
           label="PROFILE SETTINGS"

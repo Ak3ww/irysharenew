@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '../ui/button';
 import { Save, Eye, EyeOff, User, X, Info, CheckCircle } from 'lucide-react';
-import { FileInput } from '../ui/file-input';
+
 import { supabase } from '../../utils/supabase';
-import { uploadFile } from '../../utils/irys';
+
 
 import Cropper from 'react-easy-crop';
 interface ProfileSettingsProps {
@@ -260,7 +260,7 @@ export function ProfileSettings({ address, isConnected, usernameSaved, onBack }:
   const [profileVisible, setProfileVisible] = useState(true);
   const [profileBio, setProfileBio] = useState('');
   const [profileAvatar, setProfileAvatar] = useState('');
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [originalAvatarUrl, setOriginalAvatarUrl] = useState(''); // Store original avatar for cleanup
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarUploaded, setAvatarUploaded] = useState(false);
   const [showCropper, setShowCropper] = useState(false);
@@ -269,6 +269,22 @@ export function ProfileSettings({ address, isConnected, usernameSaved, onBack }:
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [usernameLoading, setUsernameLoading] = useState(false);
+  const [autoSaving, setAutoSaving] = useState(false);
+  
+  // Debug info for troubleshooting
+  const isLocalDev = import.meta.env.DEV;
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const hasSupabaseKey = !!import.meta.env.VITE_SUPABASE_ANON_KEY;
+  
+  console.log('🔍 DEBUG: ProfileSettings Environment Info:', {
+    isLocalDev,
+    hasSupabaseUrl: !!supabaseUrl,
+    hasSupabaseKey,
+    supabaseUrl: supabaseUrl ? `${supabaseUrl.substring(0, 20)}...` : 'NOT SET',
+    address,
+    isConnected,
+    usernameSaved
+  });
   // ESC key handler for back navigation
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -279,6 +295,38 @@ export function ProfileSettings({ address, isConnected, usernameSaved, onBack }:
     document.addEventListener('keydown', handleEsc);
     return () => document.removeEventListener('keydown', handleEsc);
   }, [onBack]);
+
+  // Auto-save username and bio changes to Supabase after 2.5 seconds
+  useEffect(() => {
+    if (!address || !isConnected || !usernameSaved) return;
+    
+    const timer = setTimeout(async () => {
+      if (username !== currentUsername || profileBio !== (profileBio || '')) {
+        setAutoSaving(true);
+        try {
+          // Auto-save to Supabase (but don't update profile yet)
+          const { error } = await supabase
+            .from('usernames')
+            .update({
+              username: username.trim(),
+              profile_bio: profileBio
+            })
+            .eq('address', address.toLowerCase().trim());
+          
+          if (!error) {
+            setCurrentUsername(username.trim());
+            console.log('✅ Auto-saved username/bio to Supabase');
+          }
+        } catch (error) {
+          console.log('⚠️ Auto-save failed:', error);
+        } finally {
+          setAutoSaving(false);
+        }
+      }
+    }, 2500); // 2.5 seconds
+
+    return () => clearTimeout(timer);
+  }, [username, profileBio, address, isConnected, usernameSaved, currentUsername]);
   // Fetch current profile data
   useEffect(() => {
     if (!address || !isConnected || !usernameSaved) return;
@@ -299,6 +347,7 @@ export function ProfileSettings({ address, isConnected, usernameSaved, onBack }:
           setUsername(usernameData.username);
           setProfileBio(usernameData.profile_bio || '');
           setProfileAvatar(usernameData.profile_avatar || '');
+          setOriginalAvatarUrl(usernameData.profile_avatar || ''); // Initialize original avatar URL
           // Set profile visibility based on profile_public from usernames table
           setProfileVisible(usernameData.profile_public !== false);
         }
@@ -315,14 +364,32 @@ export function ProfileSettings({ address, isConnected, usernameSaved, onBack }:
     setAvatarUploading(true);
     setError('');
     try {
-      // Get Irys uploader
-                  const { getIrysUploader } = await import('../../utils/irys');
-            const irysUploader = await getIrysUploader();
-            // Upload avatar to Irys
-            const avatarUrl = await uploadFile(irysUploader, file, address);
-      setTempAvatarUrl(avatarUrl);
+      // Use mainavatars storage with auto-replace functionality
+      const fileExt = file.name.split('.').pop();
+      const fileName = `mainavatars/${address.toLowerCase()}.${fileExt}`;
+      
+      console.log('🔍 DEBUG: Uploading avatar to:', fileName);
+      
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: true // This will automatically replace existing files
+        });
+      
+      if (uploadError) {
+        throw uploadError;
+      }
+      
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+      
+      console.log('✅ DEBUG: Avatar uploaded successfully to:', fileName);
+      
+      setTempAvatarUrl(publicUrl);
       setAvatarUploaded(true);
-      setAvatarFile(null);
       // Automatically show cropper after upload
       setShowCropper(true);
     } catch (error) {
@@ -332,147 +399,171 @@ export function ProfileSettings({ address, isConnected, usernameSaved, onBack }:
       setAvatarUploading(false);
     }
   }, [address]);
-  const handleCropComplete = (croppedImageUrl: string) => {
-    setProfileAvatar(croppedImageUrl);
+  const handleCropComplete = () => {
+    console.log('DEBUG: Crop complete, using Supabase storage URL instead of base64');
+    // Store the original avatar URL before changing it (for cleanup purposes)
+    const originalAvatarUrl = profileAvatar;
+    
+    // Use the original Supabase storage URL instead of base64 cropped version
+    setProfileAvatar(tempAvatarUrl); // Use the Supabase URL, not the cropped base64
+    
+    // Store the original URL in a ref or state for cleanup
+    setOriginalAvatarUrl(originalAvatarUrl);
+    
     setShowCropper(false);
-    setSuccess('Profile picture adjusted! Click "Save Profile Settings" to apply changes.');
+    setSuccess('Profile picture uploaded successfully! Click "Save Profile Settings" to apply changes.');
   };
   const handleSaveProfile = async () => {
     if (!address) return;
+    
     // Check if avatar was uploaded but not saved
     if (avatarUploaded && !profileAvatar) {
       setError('Please adjust your profile picture position before saving.');
       return;
     }
+    
     setLoading(true);
     setError('');
     setSuccess('');
+    
     try {
+      console.log('🔍 DEBUG: Starting profile update for wallet:', address);
+      console.log('🔍 DEBUG: Profile data:', {
+        profileVisible,
+        profileBio,
+        profileAvatar,
+        originalAvatarUrl,
+        tempAvatarUrl
+      });
+      
       // Request MetaMask signature to prove wallet ownership
       if (!(window as { ethereum?: { request: (params: { method: string; params: string[] }) => Promise<string> } }).ethereum) {
+        console.error('❌ DEBUG: MetaMask not found');
         setError('MetaMask is required for profile update');
         setLoading(false);
         return;
       }
-      const message = `Iryshare Profile Update\n\nWallet: ${address}\nProfile Visibility: ${profileVisible ? 'Public' : 'Private'}\nBio: ${profileBio}\nAvatar: ${profileAvatar}\n\nSign this message to update your profile.`;
+      
+      const message = `Iryshare Profile Update\n\nWallet: ${address}\nUsername: ${username.trim()}\nProfile Visibility: ${profileVisible ? 'Public' : 'Private'}\nBio: ${profileBio}\nAvatar: ${profileAvatar}\n\nSign this message to update your profile.`;
+      console.log('🔍 DEBUG: Requesting signature for message:', message);
+      
       const signature = await (window as { ethereum: { request: (params: { method: string; params: string[] }) => Promise<string> } }).ethereum.request({
         method: 'personal_sign',
         params: [message, address]
       });
+      
       if (!signature) {
+        console.error('❌ DEBUG: No signature received');
         setError('Signature required for profile update');
         setLoading(false);
         return;
       }
+      
+      console.log('✅ DEBUG: Signature received:', signature.substring(0, 20) + '...');
+      
+      // Clean up old avatar from storage if it exists and is different from new one
+      if (originalAvatarUrl && originalAvatarUrl !== tempAvatarUrl) {
+        try {
+          console.log('🔍 DEBUG: Cleaning up old avatar:', originalAvatarUrl);
+          
+          // Extract the actual file path from the URL
+          // Supabase URLs look like: https://xxx.supabase.co/storage/v1/object/public/avatars/mainavatars/filename.jpg
+          const urlParts = originalAvatarUrl.split('/');
+          const fileNameIndex = urlParts.indexOf('mainavatars') + 1;
+          if (fileNameIndex > 0 && fileNameIndex < urlParts.length) {
+            const oldFileName = urlParts[fileNameIndex];
+            const oldAvatarPath = `mainavatars/${oldFileName}`;
+            
+            console.log('🔍 DEBUG: Deleting old avatar path:', oldAvatarPath);
+            const { error: deleteError } = await supabase.storage
+              .from('avatars')
+              .remove([oldAvatarPath]);
+            
+            if (deleteError) {
+              console.log('⚠️ DEBUG: Error deleting old avatar:', deleteError);
+            } else {
+              console.log('✅ DEBUG: Old avatar removed successfully');
+            }
+          }
+        } catch (deleteError) {
+          console.log('⚠️ DEBUG: Error in avatar cleanup:', deleteError);
+        }
+      }
+
+      console.log('🔍 DEBUG: Updating profile in usernames table...');
+      
       // Update profile data in usernames table
       const { error: updateError } = await supabase
         .from('usernames')
         .update({
+          username: username.trim(),
           profile_public: profileVisible,
           profile_bio: profileBio,
           profile_avatar: profileAvatar,
           registration_signature: signature
         })
         .eq('address', address.toLowerCase().trim());
+        
       if (updateError) {
-        console.error('Error updating profile:', updateError);
-        setError('Error updating profile');
+        console.error('❌ DEBUG: Error updating profile in usernames table:', updateError);
+        console.error('❌ DEBUG: Error details:', {
+          code: updateError.code,
+          message: updateError.message,
+          details: updateError.details,
+          hint: updateError.hint
+        });
+        setError(`Error updating profile: ${updateError.message}`);
         setLoading(false);
         return;
       }
+      
+      console.log('✅ DEBUG: Profile updated successfully in usernames table');
+      
+      console.log('🔍 DEBUG: Updating profile_visible for all user files...');
+      
       // Update profile visibility for all user's files
       const { error: filesError } = await supabase
         .from('files')
         .update({ profile_visible: profileVisible })
         .eq('owner_address', address.toLowerCase().trim());
+        
       if (filesError) {
-        console.error('Error updating profile_visible:', filesError);
-        setError('Error updating profile visibility');
+        console.error('❌ DEBUG: Error updating profile_visible in files table:', filesError);
+        console.error('❌ DEBUG: Files error details:', {
+          code: filesError.code,
+          message: filesError.message,
+          details: filesError.details,
+          hint: filesError.hint
+        });
+        setError(`Error updating profile visibility: ${filesError.message}`);
         setLoading(false);
         return;
       }
+      
+      console.log('✅ DEBUG: Profile visibility updated for all files');
+      
       setAvatarUploaded(false);
       setSuccess('Profile updated successfully!');
+      console.log('🎉 DEBUG: Profile update completed successfully for wallet:', address);
+      
     } catch (error) {
-      console.error('Profile update error:', error);
+      console.error('❌ DEBUG: Profile update error:', error);
+      console.error('❌ DEBUG: Error type:', typeof error);
+      console.error('❌ DEBUG: Error constructor:', error?.constructor?.name);
+      console.error('❌ DEBUG: Error stack:', error && typeof error === 'object' && 'stack' in error ? (error as Error).stack : 'No stack trace');
+      
       if (error instanceof Error && error.message.includes('User rejected')) {
         setError('Profile update cancelled - signature required');
+      } else if (error instanceof Error) {
+        setError(`Profile update failed: ${error.message}`);
       } else {
-        setError('Profile update failed');
+        setError('Profile update failed - unknown error');
       }
     } finally {
       setLoading(false);
     }
   };
-  const handleSaveUsername = async () => {
-    if (!username.trim()) {
-      setError('Username is required');
-      return;
-    }
-    if (!address) {
-      setError('Wallet address is required');
-      return;
-    }
-    setLoading(true);
-    setError('');
-    setSuccess('');
-    try {
-      // Check if username is taken (excluding current user)
-      if (username.trim() !== currentUsername) {
-        const { data: existing } = await supabase
-          .from('usernames')
-          .select('id')
-          .eq('username', username.trim())
-          .neq('address', address.toLowerCase().trim())
-          .single();
-        if (existing) {
-          setError('Username is already taken');
-          setLoading(false);
-          return;
-        }
-      }
-      // Request MetaMask signature to prove wallet ownership
-      if (!(window as { ethereum?: { request: (params: { method: string; params: string[] }) => Promise<string> } }).ethereum) {
-        setError('MetaMask is required for username update');
-        setLoading(false);
-        return;
-      }
-      const message = `Iryshare Username Update\n\nWallet: ${address}\nNew Username: ${username.trim()}\n\nSign this message to update your username.`;
-      const signature = await (window as { ethereum: { request: (params: { method: string; params: string[] }) => Promise<string> } }).ethereum.request({
-        method: 'personal_sign',
-        params: [message, address]
-      });
-      if (!signature) {
-        setError('Signature required for username update');
-        setLoading(false);
-        return;
-      }
-      // Update username in Supabase
-      const { error: updateError } = await supabase
-        .from('usernames')
-        .update({
-          username: username.trim(),
-          registration_signature: signature
-        })
-        .eq('address', address.toLowerCase().trim());
-      if (updateError) {
-        setError('Error updating username');
-        setLoading(false);
-        return;
-      }
-      setCurrentUsername(username.trim());
-      setSuccess('Username updated successfully!');
-    } catch (error) {
-      console.error('Username update error:', error);
-      if (error instanceof Error && error.message.includes('User rejected')) {
-        setError('Username update cancelled - signature required');
-      } else {
-        setError('Username update failed');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+
   if (!isConnected || !usernameSaved) {
     return (
       <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6">
@@ -504,7 +595,7 @@ export function ProfileSettings({ address, isConnected, usernameSaved, onBack }:
             </div>
           ) : (
             <div className="space-y-8">
-              {/* Username Section */}
+              {/* Username Section - Simplified */}
               <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6">
                 <h4 className="text-xl text-white font-medium mb-6 flex items-center gap-3" style={{ fontFamily: 'Irys2' }}>
                   <User size={24} className="text-[#67FFD4]" />
@@ -513,35 +604,29 @@ export function ProfileSettings({ address, isConnected, usernameSaved, onBack }:
                 <div className="space-y-6">
                   <div>
                     <label className="text-white/80 text-sm font-medium block mb-2" style={{ fontFamily: 'Irys2' }}>
-                      Current Username
-                    </label>
-                    <div className="text-white bg-white/5 px-4 py-3 rounded-lg border border-white/10">
-                      @{currentUsername}
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-white/80 text-sm font-medium block mb-2" style={{ fontFamily: 'Irys2' }}>
-                      New Username
+                      Username
                     </label>
                     <input
                       type="text"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
-                      placeholder="Enter new username"
+                      placeholder="Enter username"
                       className="w-full bg-white/5 border border-white/20 text-white p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#67FFD4] focus:border-transparent"
                       disabled={loading}
                       style={{ fontFamily: 'Irys2' }}
                     />
+                    <div className="flex items-center gap-2 mt-2">
+                      <p className="text-white/60 text-sm" style={{ fontFamily: 'Irys2' }}>
+                        Changes will be auto-saved and committed when you click "Save Profile Settings"
+                      </p>
+                      {autoSaving && (
+                        <div className="flex items-center gap-1 text-[#67FFD4] text-xs">
+                          <div className="animate-spin rounded-full h-3 w-3 border-b border-[#67FFD4]"></div>
+                          Auto-saving...
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <Button
-                    variant="irys"
-                    onClick={handleSaveUsername}
-                    disabled={loading || username.trim() === currentUsername}
-                    className="flex items-center gap-2"
-                  >
-                    <Save size={16} />
-                    Update Username
-                  </Button>
                 </div>
               </div>
               {/* Profile Visibility Section */}
@@ -592,6 +677,17 @@ export function ProfileSettings({ address, isConnected, usernameSaved, onBack }:
                       disabled={loading}
                       style={{ fontFamily: 'Irys2' }}
                     />
+                    <div className="flex items-center gap-2 mt-2">
+                      <p className="text-white/60 text-sm" style={{ fontFamily: 'Irys2' }}>
+                        Changes will be auto-saved and committed when you click "Save Profile Settings"
+                      </p>
+                      {autoSaving && (
+                        <div className="flex items-center gap-1 text-[#67FFD4] text-xs">
+                          <div className="animate-spin rounded-full h-3 w-3 border-b border-[#67FFD4]"></div>
+                          Auto-saving...
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div>
                     <label className="text-white/80 text-sm font-medium block mb-2 flex items-center gap-2" style={{ fontFamily: 'Irys2' }}>
@@ -603,37 +699,49 @@ export function ProfileSettings({ address, isConnected, usernameSaved, onBack }:
                          </div>
                       </div>
                     </label>
-                    {/* Avatar Preview */}
-                    <div className="flex items-center gap-6 mb-4">
-                      <div className="flex items-center justify-center w-24 h-24 bg-white/5 rounded-full overflow-hidden border-2 border-white/10">
-                        {profileAvatar ? (
-                          <img src={profileAvatar} alt="Profile Avatar" className="w-full h-full object-cover" />
-                        ) : (
-                          <User size={48} className="text-white/40" />
-                        )}
-                      </div>
-                      {/* Avatar Upload */}
-                      <div className="flex-1">
-                        <FileInput
+                    {/* Avatar Section - Exact Copy from Linktree Appearance */}
+                    <div className="mb-8">
+                      <label className="block text-white/80 text-sm mb-4" style={{ fontFamily: 'Irys2' }}>
+                        PROFILE AVATAR
+                      </label>
+                      <div className="flex items-center space-x-4">
+                        <div className="w-20 h-20 bg-white/10 rounded-full flex items-center justify-center border-2 border-white/20">
+                          {profileAvatar ? (
+                            <img 
+                              src={profileAvatar} 
+                              alt="Profile"
+                              className="w-full h-full rounded-full object-cover"
+                            />
+                          ) : (
+                            <svg className="w-8 h-8 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                          )}
+                        </div>
+                        <input
+                          type="file"
+                          id="avatar-upload"
                           accept="image/*"
-                          onChange={async (file) => {
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
                             if (file) {
-                              setAvatarFile(file);
                               setSuccess(''); // Clear previous success messages
                               setError(''); // Clear previous errors
                               // Automatically upload to Irys
                               await handleAvatarUpload(file);
-                            } else {
-                              setAvatarFile(null);
+                              // Reset input
+                              e.target.value = '';
                             }
                           }}
-                          selectedFile={avatarFile}
-                          disabled={loading || avatarUploading}
-                          loading={avatarUploading}
-                          placeholder="Choose profile picture..."
-                          variant="profile"
-                          maxSize={5 * 1024 * 1024} // 5MB limit
                         />
+                        <label 
+                          htmlFor="avatar-upload"
+                          className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors border border-white/20 text-sm cursor-pointer"
+                          style={{ fontFamily: 'Irys2' }}
+                        >
+                          CHANGE AVATAR
+                        </label>
                       </div>
                     </div>
                                          {/* Upload Status */}
@@ -680,6 +788,8 @@ export function ProfileSettings({ address, isConnected, usernameSaved, onBack }:
                   {success}
                 </div>
               )}
+              
+
             </div>
           )}
         </div>

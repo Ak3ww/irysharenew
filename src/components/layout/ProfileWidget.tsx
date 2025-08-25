@@ -7,7 +7,6 @@ interface ProfileWidgetProps {
   address: string;
   isConnected: boolean;
   usernameSaved: boolean;
-  isMobile?: boolean;
 }
 interface UserStats {
   totalFiles: number;
@@ -16,7 +15,7 @@ interface UserStats {
   username: string;
   profileAvatar: string;
 }
-export function ProfileWidget({ address, isConnected, usernameSaved, isMobile = false }: ProfileWidgetProps) {
+export function ProfileWidget({ address, isConnected, usernameSaved }: ProfileWidgetProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [stats, setStats] = useState<UserStats | null>(null);
   const { toast } = useToast();
@@ -103,120 +102,116 @@ export function ProfileWidget({ address, isConnected, usernameSaved, isMobile = 
     return `${irysAmount.toFixed(4)} IRYS`;
   };
   // Positioning based on layout - moved to top navigation bar
-  const containerClasses = isMobile 
-    ? "fixed top-0 left-0 right-0 z-[9999] bg-black/20 backdrop-blur-sm border-b border-white/5" 
-    : "w-full bg-transparent";
   return (
-    <div className={containerClasses}>
-      <div className="flex items-center justify-between px-4 py-2">
-        <div className="flex-1"></div>
-        <div className="relative">
-          {/* Expanded Stats Panel */}
-          {isExpanded && stats && (
-            <div className="absolute right-0 top-full mt-2 w-80 bg-black/90 backdrop-blur-xl border border-white/20 rounded-2xl p-6 shadow-2xl animate-in slide-in-from-top-2 duration-200">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-white font-semibold text-lg">Profile Stats</h3>
-            <button
-              onClick={() => setIsExpanded(false)}
-              className="text-white/60 hover:text-white transition-colors"
-            >
-              <X size={16} />
-            </button>
+    <div className="relative">
+      {/* Profile Button */}
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="relative w-12 h-12 bg-white/5 backdrop-blur-xl border border-white/10 rounded-full overflow-hidden hover:bg-white/10 transition-all duration-200 group"
+      >
+        {stats?.profileAvatar ? (
+          <img 
+            src={stats.profileAvatar} 
+            alt={stats.username} 
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <div className="text-white/60 text-2xl">
+              {stats?.username?.charAt(0).toUpperCase() || 'U'}
+            </div>
           </div>
-          <div className="space-y-4">
-            {/* Username */}
-            <div className="flex items-center justify-between">
-              <span className="text-white/60 text-sm">Username</span>
+        )}
+      </button>
+
+      {/* Expanded Profile Panel */}
+      {isExpanded && (
+        <div className="absolute right-0 top-full mt-2 w-80 bg-black border border-white/20 rounded-xl shadow-2xl z-[9999]">
+          <div className="p-6">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-white" style={{ fontFamily: 'Irys1', letterSpacing: '0.1em' }}>
+                PROFILE OVERVIEW
+              </h3>
               <button
-                onClick={() => copyToClipboard(`@${stats.username}`)}
-                className="text-white font-medium hover:text-[#67FFD4] transition-colors cursor-pointer"
-                title="Click to copy username"
+                onClick={() => setIsExpanded(false)}
+                className="p-2 rounded-lg hover:bg-white/10 transition-colors"
               >
-                @{stats.username}
+                <X className="w-4 h-4 text-white/60" />
               </button>
             </div>
-            {/* Wallet Address */}
-            <div className="flex items-center justify-between">
-              <span className="text-white/60 text-sm">Wallet</span>
-              <button
-                onClick={() => copyToClipboard(address)}
-                className="text-white font-medium hover:text-[#67FFD4] transition-colors cursor-pointer font-mono text-sm"
-                title="Click to copy wallet address"
-              >
-                {address.slice(0, 6)}...{address.slice(-4)}
-              </button>
-            </div>
-            {/* Irys Balance */}
-            <div className="flex items-center justify-between">
-              <span className="text-white/60 text-sm">Irys Balance</span>
-              <div className="text-right">
-                <div className="text-white font-medium">
-                  {balanceLoading ? (
-                    <div className="animate-pulse bg-white/20 h-4 w-16 rounded"></div>
-                  ) : (
-                    formatIrysBalance(irysBalance?.value)
-                  )}
+
+            {/* Stats Grid */}
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <div className="bg-white/10 rounded-lg p-4 border border-white/20">
+                <div className="text-white/60 text-xs mb-1" style={{ fontFamily: 'Irys2' }}>
+                  TOTAL FILES
                 </div>
-                <div className="text-white/40 text-xs">
-                  Irys Testnet
+                <div className="text-2xl font-bold text-white" style={{ fontFamily: 'Irys1' }}>
+                  {stats?.totalFiles || 0}
+                </div>
+              </div>
+              <div className="bg-white/10 rounded-lg p-4 border border-white/20">
+                <div className="text-white/60 text-xs mb-1" style={{ fontFamily: 'Irys2' }}>
+                  STORAGE USED
+                </div>
+                <div className="text-2xl font-bold text-white" style={{ fontFamily: 'Irys1' }}>
+                  {formatBytes(stats?.usedStorage || 0)}
                 </div>
               </div>
             </div>
-            {/* Total Files */}
-            <div className="flex items-center justify-between">
-              <span className="text-white/60 text-sm">Total Files</span>
-              <span className="text-white font-medium">{stats.totalFiles}</span>
-            </div>
-            {/* Free Upload Credit */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-white/60 text-sm">Free Upload Credit</span>
-                <span className="text-white font-medium">{formatBytes(stats.totalStorage - stats.usedStorage)}</span>
+
+            {/* Storage Bar */}
+            <div className="mb-6">
+              <div className="flex justify-between text-xs text-white/60 mb-2" style={{ fontFamily: 'Irys2' }}>
+                <span>STORAGE</span>
+                <span>{formatBytes(stats?.usedStorage || 0)} / {formatBytes(stats?.totalStorage || 0)}</span>
               </div>
-              <div className="w-full bg-white/10 rounded-full h-2">
+              <div className="w-full bg-white/20 rounded-full h-2">
                 <div 
-                  className="bg-[#67FFD4] h-2 rounded-full transition-all duration-300"
+                  className="bg-gradient-to-r from-[#67FFD4] to-[#8AFFE4] h-2 rounded-full transition-all duration-300"
                   style={{ width: `${Math.min(storagePercentage, 100)}%` }}
                 />
               </div>
-              <div className="text-right">
-                <span className="text-white/40 text-xs">{formatBytes(stats.totalStorage)} total</span>
+            </div>
+
+            {/* Irys Balance */}
+            <div className="bg-white/10 rounded-lg p-4 border border-white/20 mb-6">
+              <div className="text-white/60 text-xs mb-1" style={{ fontFamily: 'Irys2' }}>
+                IRYS BALANCE
+              </div>
+              <div className="text-2xl font-bold text-[#67FFD4]" style={{ fontFamily: 'Irys1' }}>
+                {balanceLoading ? '...' : formatIrysBalance(irysBalance?.value)}
               </div>
             </div>
-            {/* Disconnect Button */}
-            <div className="pt-4 border-t border-white/10">
+
+            {/* Actions */}
+            <div className="space-y-3">
               <button
-                onClick={() => {
-                  disconnect();
-                  setIsExpanded(false);
-                }}
-                className="w-full flex items-center justify-center gap-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 px-4 py-2 rounded-lg transition-all duration-200"
+                onClick={() => copyToClipboard(address)}
+                className="w-full flex items-center justify-center gap-3 p-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-white transition-colors"
+                style={{ fontFamily: 'Irys2' }}
               >
-                <span className="text-sm font-medium">Disconnect Wallet</span>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                COPY ADDRESS
+              </button>
+              
+              <button
+                onClick={() => disconnect()}
+                className="w-full flex items-center justify-center gap-3 p-3 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-lg text-red-400 transition-colors"
+                style={{ fontFamily: 'Irys2' }}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                DISCONNECT WALLET
               </button>
             </div>
           </div>
         </div>
       )}
-      {/* Profile Button */}
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="relative w-12 h-12 bg-black/20 backdrop-blur-sm border border-white/10 rounded-full overflow-hidden hover:bg-black/30 transition-all duration-200 group"
-      >
-        {stats?.profileAvatar ? (
-          <img 
-            src={stats.profileAvatar} 
-            alt="Profile" 
-            className="w-full h-full object-cover"
-          />
-        ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-              <div className="text-white/60 text-2xl">👤</div>
-            </div>
-        )}
-      </button>
-        </div>
-      </div>
     </div>
   );
 } 

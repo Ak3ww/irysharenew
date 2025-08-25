@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '../ui/button';
-import { Share, X, Lock, Globe, Send } from 'lucide-react';
+import { X, Lock, Globe } from 'lucide-react';
 import { MyFiles } from './MyFiles';
 import { FileInput } from '../ui/file-input';
 import { supabase } from '../../utils/supabase';
@@ -307,70 +307,77 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
     }
   };
   return (
-    <div className="min-h-screen bg-[#18191a] p-4 md:p-6">
+    <div className="min-h-screen bg-black p-4 md:p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 mb-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div className="flex items-center gap-4">
               <div>
-                <h1 className="text-3xl font-bold text-white mb-1" style={{ fontFamily: 'Irys1', letterSpacing: '0.1em' }}>
-                  WELCOME TO <span style={{ fontFamily: 'IrysItalic', letterSpacing: '0.1em' }} className="ml-0">IRYSHARE</span>
+                <h1 className="text-3xl font-bold text-white mb-3" style={{ fontFamily: 'Irys1', letterSpacing: '0.1em' }}>
+                  WELCOME TO <span style={{ fontFamily: 'IrysItalic', letterSpacing: '0.1em' }} className="ml-1">IRYSHARE</span>
                 </h1>
-                <p className="text-white/60 text-sm" style={{ fontFamily: 'Irys2' }}>Share and store files securely on Irys Network</p>
+                <p className="text-white/60 text-sm" style={{ fontFamily: 'Irys2' }}>
+                  Share and store files securely on Irys Network
+                </p>
               </div>
             </div>
           </div>
         </div>
+
         {/* Action Cards */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-12">
           {/* Share & Store Files Card */}
           <div className="rounded-lg p-6 flex flex-col bg-gradient-to-br from-blue-500 to-purple-600">
             <div className="flex items-center gap-3 mb-4">
-              <Share size={24} className="text-white" />
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-share text-white">
+                <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
+                <polyline points="16 6 12 2 8 6"></polyline>
+                <line x1="12" x2="12" y1="2" y2="15"></line>
+              </svg>
               <h3 className="text-white font-bold text-xl">Share & Store Files</h3>
             </div>
-            <p className="text-white/90 mb-6 flex-1">
-              Share files securely with specific users using encryption, or store files in decentralized storage. Choose between public and private encrypted storage.
-            </p>
+            <p className="text-white/90 mb-6 flex-1">Share files securely with specific users using encryption, or store files in decentralized storage. Choose between public and private encrypted storage.</p>
             <div className="flex gap-3">
-              <Button
-                variant="irys"
+              <button 
                 onClick={() => setSelectedAction('share')}
-                className="flex-1 bg-white/20 hover:bg-white/30 text-white border-white/30"
+                className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-[#67FFD4] text-black hover:bg-[#8AFFE4] font-bold transition-colors h-10 px-4 py-2 flex-1 bg-white/20 hover:bg-white/30 text-white border-white/30"
               >
                 Share Files
-              </Button>
-              <Button
-                variant="irys"
+              </button>
+              <button 
                 onClick={() => setSelectedAction('store')}
-                className="flex-1 bg-white/20 hover:bg-white/30 text-white border-white/30"
+                className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-[#67FFD4] text-black hover:bg-[#8AFFE4] font-bold transition-colors h-10 px-4 py-2 flex-1 bg-white/20 hover:bg-white/30 text-white border-white/30"
               >
                 Store Files
-              </Button>
+              </button>
             </div>
           </div>
+
           {/* Send Tokens Card */}
           <div className="rounded-lg p-6 flex flex-col bg-gradient-to-br from-yellow-400 to-orange-500">
             <div className="flex items-center gap-3 mb-4">
-              <Send size={24} className="text-white" />
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-send text-white">
+                <path d="M14.536 21.21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"></path>
+                <path d="m21.854 2.147-10.94 10.939"></path>
+              </svg>
               <h3 className="text-white font-bold text-xl">Send IRYS Tokens</h3>
             </div>
-            <p className="text-white/90 mb-6 flex-1">
-              Disperse IRYS tokens to multiple addresses instantly. Send to as many recipients as you want with one click.
-            </p>
-            <Button
-              variant="irys"
+            <p className="text-white/90 mb-6 flex-1">Disperse IRYS tokens to multiple addresses instantly. Send to as many recipients as you want with one click.</p>
+            <button 
               onClick={() => onPageChange?.('sendtokens')}
-              className="w-full bg-white/20 hover:bg-white/30 text-white border-white/30"
+              className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-[#67FFD4] text-black hover:bg-[#8AFFE4] font-bold transition-colors h-10 px-4 py-2 w-full bg-white/20 hover:bg-white/30 text-white border-white/30"
             >
               Send Tokens
-            </Button>
+            </button>
           </div>
         </div>
+
         {/* Recent Files */}
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-4 md:p-6">
-          <h2 className="text-white font-semibold text-xl mb-6">Recent Files</h2>
+        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6">
+          <h2 className="text-white font-semibold text-xl mb-6" style={{ fontFamily: 'Irys1', letterSpacing: '0.1em' }}>
+            RECENT FILES
+          </h2>
           <MyFiles 
             address={address}
             isConnected={isConnected}

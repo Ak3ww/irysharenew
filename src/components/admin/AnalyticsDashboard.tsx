@@ -70,18 +70,18 @@ export function AnalyticsDashboard({ refreshTrigger = 0 }: AnalyticsDashboardPro
   };
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#18191a] p-6">
+      <div className="min-h-screen bg-black p-6">
         <div className="max-w-6xl mx-auto">
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#67FFD4] mx-auto"></div>
-            <p className="text-white/80 mt-4 text-lg">Loading analytics...</p>
+            <p className="text-white/80 mt-4 text-lg" style={{ fontFamily: 'Irys2' }}>Loading analytics...</p>
           </div>
         </div>
       </div>
     );
   }
   return (
-    <div className="min-h-screen bg-[#18191a] p-6">
+    <div className="min-h-screen bg-black p-6">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-8">

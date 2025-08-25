@@ -136,7 +136,6 @@ export async function encryptFileData(
       decryptionKey
     };
   } catch (error) {
-    console.error('Encryption error:', error);
     throw new Error(`Encryption failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
@@ -212,8 +211,6 @@ export async function decryptFileData(
       return decryptedData;
     }
   } catch (error) {
-    console.error('❌ Decryption error:', error);
-    console.error('❌ Error details:', error instanceof Error ? error.message : 'Unknown error');
     throw new Error(`Decryption failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }

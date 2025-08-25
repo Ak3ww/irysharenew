@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Download, Share, UserPlus, Check, AlertCircle, Info } from 'lucide-react';
+import { X, Download, Share, UserPlus, Check, AlertCircle, Info, Heart, MessageCircle, Send } from 'lucide-react';
 import { downloadAndDecryptFromIrys, updateFileAccessControl } from '../../utils/aesIrys';
 import { supabase } from '../../utils/supabase';
+
 interface FileData {
   id: string;
   owner_address: string;
@@ -20,6 +21,8 @@ interface FileData {
   recipient_address?: string;
   recipient_username?: string;
   shared_at?: string;
+  like_count?: number;
+  comment_count?: number;
 }
 interface FilePreviewProps {
   file: FileData | null;
@@ -27,11 +30,27 @@ interface FilePreviewProps {
   onClose: () => void;
   onFileViewed?: (fileId: string) => void;
   showSharePanelOnOpen?: boolean;
+  onFileUpdated?: (fileId: string, updates: Partial<FileData>) => void;
 }
-export function FilePreview({ file, address, onClose, onFileViewed, showSharePanelOnOpen = false }: FilePreviewProps) {
+export function FilePreview({ file, address, onClose, onFileViewed, showSharePanelOnOpen = false, onFileUpdated }: FilePreviewProps) {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [previewData, setPreviewData] = useState<string | null>(null);
+  const [copyButtonText, setCopyButtonText] = useState('Copy File URL');
+  // Like and comment state
+  const [isLiked, setIsLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(file?.like_count || 0);
+  const [showComments, setShowComments] = useState(false);
+  const [commentText, setCommentText] = useState('');
+  const [comments, setComments] = useState<Array<{
+    id: string;
+    text: string;
+    user_address: string;
+    username?: string;
+    profile_avatar?: string | null;
+    created_at: string;
+  }>>([]);
+  const [commentCount, setCommentCount] = useState(file?.comment_count || 0);
   // Enhanced zoom and drag state for preview
   const [zoom, setZoom] = useState(1);
   const [isDragging, setIsDragging] = useState(false);
@@ -155,7 +174,7 @@ export function FilePreview({ file, address, onClose, onFileViewed, showSharePan
           try {
             const { data } = await supabase
               .from('usernames')
-              .select('address')
+              .select('*')
               .ilike('username', username)
               .single();
             if (data) {
@@ -206,8 +225,8 @@ export function FilePreview({ file, address, onClose, onFileViewed, showSharePan
           try {
             const { data } = await supabase
               .from('usernames')
-              .select('username')
-              .eq('address', addressLower)
+              .select('*')
+              .ilike('address', addressLower)
               .single();
             if (data && data.username) {
               validRecipients.push({ address: addressLower, username: data.username });
@@ -458,6 +477,191 @@ export function FilePreview({ file, address, onClose, onFileViewed, showSharePan
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault(); // Prevent default context menu
   };
+
+  // Social sharing function
+  const handleSocialShare = (platform: 'twitter' | 'facebook' | 'copy') => {
+    if (!file) return;
+    
+    const publicUrl = `${window.location.origin}/file/${file.id}`;
+    const fileName = file.file_name;
+    
+    switch (platform) {
+      case 'twitter': {
+        const twitterUrl = `https://twitter.com/intent/tweet?text=Check out this file: ${fileName}&url=${encodeURIComponent(publicUrl)}&via=iryshare`;
+        window.open(twitterUrl, '_blank', 'width=600,height=400');
+        break;
+      }
+      case 'facebook': {
+        const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(publicUrl)}`;
+        window.open(facebookUrl, '_blank', 'width=600,height=400');
+        break;
+      }
+
+      case 'copy': {
+        // Change button text to show copied
+        setCopyButtonText('Copied!');
+        
+        navigator.clipboard.writeText(publicUrl).then(() => {
+          // Reset button text after 2 seconds
+          setTimeout(() => {
+            setCopyButtonText('Copy File URL');
+          }, 2000);
+        }).catch(() => {
+          // Fallback for older browsers
+          const textArea = document.createElement('textarea');
+          textArea.value = publicUrl;
+          document.body.appendChild(textArea);
+          textArea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textArea);
+          
+          // Reset button text after 2 seconds
+          setTimeout(() => {
+            setCopyButtonText('Copy File URL');
+          }, 2000);
+        });
+        break;
+      }
+    }
+  };
+
+  // Like function
+  const handleLike = async () => {
+    console.log('handleLike called with:', { file: file?.id, address, currentLikeState: isLiked });
+    
+    if (!file || !address) {
+      console.log('Validation failed:', { hasFile: !!file, hasAddress: !!address });
+      return;
+    }
+    
+    try {
+      const newLikeState = !isLiked;
+      console.log('Attempting to', newLikeState ? 'add' : 'remove', 'like...');
+      
+      if (newLikeState) {
+        // Add like
+        const { error } = await supabase
+          .from('file_likes')
+          .insert({
+            file_id: file.id,
+            user_address: address.toLowerCase()
+          });
+        
+        if (error) {
+          console.error('Database error adding like:', error);
+          throw error;
+        }
+        
+        console.log('Like added successfully');
+        setIsLiked(true);
+        const newLikeCount = likeCount + 1;
+        setLikeCount(newLikeCount);
+        
+        // Notify parent component of the update
+        if (onFileUpdated) {
+          console.log('Calling onFileUpdated with like (add):', { fileId: file.id, updates: { like_count: newLikeCount } });
+          onFileUpdated(file.id, { like_count: newLikeCount });
+        }
+      } else {
+        // Remove like
+        const { error } = await supabase
+          .from('file_likes')
+          .delete()
+          .eq('file_id', file.id)
+          .eq('user_address', address.toLowerCase());
+        
+        if (error) {
+          console.error('Database error removing like:', error);
+          throw error;
+        }
+        
+        console.log('Like removed successfully');
+        setIsLiked(false);
+        const newLikeCount = Math.max(0, likeCount - 1);
+        setLikeCount(newLikeCount);
+        
+        // Notify parent component of the update
+        if (onFileUpdated) {
+          console.log('Calling onFileUpdated with like (remove):', { fileId: file.id, updates: { like_count: newLikeCount } });
+          onFileUpdated(file.id, { like_count: newLikeCount });
+        }
+      }
+    } catch (error) {
+      console.error('Error handling like:', error);
+      // Revert state on error
+      setIsLiked(!isLiked);
+      setLikeCount(prev => isLiked ? prev + 1 : prev - 1);
+    }
+  };
+
+  // Comment functions
+  const handleAddComment = async () => {
+    console.log('handleAddComment called with:', { file: file?.id, address, commentText });
+    
+    if (!file || !address || !commentText.trim()) {
+      console.log('Validation failed:', { hasFile: !!file, hasAddress: !!address, hasText: !!commentText.trim() });
+      return;
+    }
+    
+    try {
+      console.log('Attempting to save comment to database...');
+      
+      // Save comment to database (convert address to lowercase to match database format)
+      const { data, error } = await supabase
+        .from('file_comments')
+        .insert({
+          file_id: file.id,
+          user_address: address.toLowerCase(),
+          text: commentText.trim()
+        })
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('Database error:', error);
+        throw error;
+      }
+      
+      console.log('Comment saved successfully:', data);
+      
+      // Get username from usernames table (convert address to lowercase to match database)
+      const { data: userData, error: usernameError } = await supabase
+        .from('usernames')
+        .select('*')
+        .eq('address', address.toLowerCase())
+        .single();
+      
+      console.log('Username fetch result:', { userData, usernameError, address });
+      
+      const newComment = {
+        id: data.id,
+        text: data.text,
+        user_address: data.user_address,
+        username: userData?.username || 'Anonymous',
+        profile_avatar: userData?.profile_avatar || null,
+        created_at: data.created_at
+      };
+      
+      console.log('New comment object:', newComment);
+      
+      // Add comment to local state
+      setComments(prev => [newComment, ...prev]);
+      const newCommentCount = commentCount + 1;
+      setCommentCount(newCommentCount);
+      setCommentText('');
+      
+      // Notify parent component of the update
+      if (onFileUpdated) {
+        console.log('Calling onFileUpdated with:', { fileId: file.id, updates: { comment_count: newCommentCount } });
+        onFileUpdated(file.id, { comment_count: newCommentCount });
+      }
+      
+      console.log('Comment added successfully!');
+    } catch (error) {
+      console.error('Error adding comment:', error);
+    }
+  };
+
   // Load preview when file changes
   useEffect(() => {
     if (file) {
@@ -466,8 +670,86 @@ export function FilePreview({ file, address, onClose, onFileViewed, showSharePan
       if (showSharePanelOnOpen && file.is_encrypted && file.is_owned) {
         setShowSharePanel(true);
       }
+      
+      // Load likes and comments for public files
+      if (file.is_public && !file.is_encrypted) {
+        loadFileLikes();
+        loadFileComments();
+      }
     }
   }, [file, showSharePanelOnOpen]);
+
+  // Load file likes
+  const loadFileLikes = async () => {
+    if (!file || !address) return;
+    
+    try {
+      // Check if current user has liked this file
+      const { data: userLike } = await supabase
+        .from('file_likes')
+        .select('id')
+        .eq('file_id', file.id)
+        .eq('user_address', address.toLowerCase())
+        .single();
+      
+      setIsLiked(!!userLike);
+      
+      // Get total like count
+      const { count } = await supabase
+        .from('file_likes')
+        .select('*', { count: 'exact', head: true })
+        .eq('file_id', file.id);
+      
+      setLikeCount(count || 0);
+    } catch (error) {
+      console.error('Error loading likes:', error);
+    }
+  };
+
+  // Load file comments
+  const loadFileComments = async () => {
+    if (!file) return;
+    
+    try {
+      const { data: commentsData, error } = await supabase
+        .from('file_comments')
+        .select(`
+          id,
+          text,
+          user_address,
+          created_at
+        `)
+        .eq('file_id', file.id)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      
+      // Get usernames and profile avatars for all comment authors (fetch each one individually to avoid confusion)
+      const formattedComments = await Promise.all(
+        commentsData.map(async (comment) => {
+          const { data: userData } = await supabase
+            .from('usernames')
+            .select('username, profile_avatar')
+            .eq('address', comment.user_address.toLowerCase())
+            .single();
+          
+          return {
+            id: comment.id,
+            text: comment.text,
+            user_address: comment.user_address,
+            username: userData?.username || 'Anonymous',
+            profile_avatar: userData?.profile_avatar || null,
+            created_at: comment.created_at
+          };
+        })
+      );
+      
+      setComments(formattedComments);
+      setCommentCount(formattedComments.length);
+    } catch (error) {
+      console.error('Error loading comments:', error);
+    }
+  };
   // ESC key handler for closing preview
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -550,23 +832,102 @@ export function FilePreview({ file, address, onClose, onFileViewed, showSharePan
           >
             <Info size={20} />
           </button>
-          <button
-            onClick={() => {
-              if (file.is_encrypted && file.is_owned) {
-                setShowSharePanel(!showSharePanel);
+          <div className="relative">
+            <button
+              onClick={() => {
+                if (file.is_public && !file.is_encrypted) {
+                  // For public files, show social sharing options
+                  setShowShareMenu(!showShareMenu);
+                } else if (file.is_encrypted && file.is_owned) {
+                  // For encrypted files, show share panel
+                  setShowSharePanel(!showSharePanel);
+                }
+              }}
+              disabled={!file.is_public && (!file.is_encrypted || !file.is_owned)}
+              className={`rounded-full p-2 backdrop-blur-sm transition-colors ${
+                (file.is_public && !file.is_encrypted) || (file.is_encrypted && file.is_owned)
+                  ? 'bg-black/50 text-white hover:text-[#67FFD4]'
+                  : 'bg-black/30 text-white/40 cursor-not-allowed'
+              }`}
+              title={
+                file.is_public && !file.is_encrypted 
+                  ? 'Share File' 
+                  : file.is_encrypted && file.is_owned 
+                    ? 'Share Encrypted File' 
+                    : 'No sharing available'
               }
-            }}
-            disabled={!file.is_encrypted || !file.is_owned}
-            className={`rounded-full p-2 backdrop-blur-sm transition-colors ${
-              file.is_encrypted && file.is_owned
-                ? 'bg-black/50 text-white hover:text-[#67FFD4]'
-                : 'bg-black/30 text-white/40 cursor-not-allowed'
-            }`}
-            title={file.is_encrypted && file.is_owned ? 'Share File' : 'Only file owners can share encrypted files'}
-          >
-            <Share size={20} />
-          </button>
+            >
+              <Share size={20} />
+            </button>
+            
+            {/* Social Sharing Dropdown for Public Files */}
+            {showShareMenu && file.is_public && !file.is_encrypted && (
+              <div className="absolute top-12 left-0 bg-black/90 border border-white/20 rounded-lg shadow-lg z-30 min-w-[200px] p-2">
+                <div className="text-white/60 text-xs px-3 py-2 border-b border-white/10 mb-2">
+                  Share File
+                </div>
+                               <button
+                 onClick={() => handleSocialShare('twitter')}
+                 className="w-full flex items-center gap-3 px-3 py-2 text-white hover:bg-white/10 text-sm rounded-md transition-colors"
+               >
+                 <img 
+                   src="/social-icons/icons8-x-white.svg" 
+                   alt="Twitter/X" 
+                   className="w-4 h-4"
+                 />
+                 Share on X (Twitter)
+               </button>
+                               <button
+                 onClick={() => handleSocialShare('facebook')}
+                 className="w-full flex items-center gap-3 px-3 py-2 text-white hover:bg-white/10 text-sm rounded-md transition-colors"
+               >
+                 <img 
+                   src="/social-icons/icons8-facebook.svg" 
+                   alt="Facebook" 
+                   className="w-4 h-4"
+                 />
+                 Share on Facebook
+               </button>
+                               <button
+                 onClick={() => handleSocialShare('copy')}
+                 className="w-full flex items-center gap-3 px-3 py-2 text-white hover:bg-white/10 text-sm rounded-md transition-colors"
+               >
+                 <svg className="w-4 h-4 text-[#67FFD4]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                 </svg>
+                 {copyButtonText}
+               </button>
+              </div>
+            )}
+          </div>
         </div>
+
+        {/* Like and Comment Buttons - Only for Public Files */}
+        {file.is_public && !file.is_encrypted && (
+          <div className="absolute bottom-4 left-4 z-10 flex gap-3">
+            <button
+              onClick={handleLike}
+              className={`flex items-center gap-2 px-3 py-2 rounded-full backdrop-blur-sm transition-colors ${
+                isLiked 
+                  ? 'bg-red-500/80 text-white' 
+                  : 'bg-black/50 text-white hover:text-red-400'
+              }`}
+              title={isLiked ? 'Unlike' : 'Like'}
+            >
+              <Heart size={16} className={isLiked ? 'fill-current' : ''} />
+              <span className="text-sm font-medium">{likeCount}</span>
+            </button>
+            <button
+              onClick={() => setShowComments(!showComments)}
+              className="flex items-center gap-2 px-3 py-2 rounded-full bg-black/50 text-white hover:text-blue-400 backdrop-blur-sm transition-colors"
+              title={showComments ? 'Hide Comments' : 'Show Comments'}
+            >
+              <MessageCircle size={16} />
+              <span className="text-sm font-medium">{commentCount}</span>
+            </button>
+          </div>
+        )}
+
         {/* Scroll Tooltips */}
         {(isImage(file) || isPDF(file)) && (
           <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10">
@@ -678,6 +1039,86 @@ export function FilePreview({ file, address, onClose, onFileViewed, showSharePan
               )}
             </div>
           ) : null}
+
+          {/* Comments Section - Only for Public Files */}
+          {file.is_public && !file.is_encrypted && showComments && (
+            <div className="absolute right-4 top-16 bottom-4 w-80 bg-black/80 backdrop-blur-xl border border-white/10 rounded-2xl p-6 overflow-y-auto">
+              <h3 className="text-[#67FFD4] font-bold text-lg mb-4">Comments ({commentCount})</h3>
+              
+              {/* Add Comment */}
+              <div className="mb-6">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    placeholder="Add a comment..."
+                    className="flex-1 px-3 py-2 bg-white/5 border border-white/10 text-white placeholder-white/40 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#67FFD4] focus:border-transparent transition-all"
+                    onKeyPress={(e) => e.key === 'Enter' && handleAddComment()}
+                  />
+                  <button
+                    onClick={handleAddComment}
+                    disabled={!commentText.trim()}
+                    className="px-4 py-2 bg-[#67FFD4] text-black font-medium rounded-lg hover:bg-[#67FFD4]/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <Send size={16} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Comments List */}
+              <div className="space-y-4">
+                {comments.length === 0 ? (
+                  <div className="text-center text-white/40 py-8">
+                    <MessageCircle size={32} className="mx-auto mb-2 opacity-50" />
+                    <p>No comments yet</p>
+                    <p className="text-sm">Be the first to comment!</p>
+                  </div>
+                ) : (
+                  comments.map((comment) => (
+                    <div key={comment.id} className="bg-white/5 border border-white/10 rounded-lg p-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        {/* Profile Picture */}
+                        {comment.profile_avatar ? (
+                          <img 
+                            src={comment.profile_avatar} 
+                            alt={`${comment.username || 'User'}'s avatar`}
+                            className="w-6 h-6 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-6 h-6 bg-[#67FFD4]/20 rounded-full flex items-center justify-center">
+                            <span className="text-[#67FFD4] text-xs font-bold">
+                              {comment.username ? comment.username[0].toUpperCase() : 'A'}
+                            </span>
+                          </div>
+                        )}
+                        
+                        {/* Username - Clickable if not current user */}
+                        {comment.user_address.toLowerCase() === address?.toLowerCase() ? (
+                          <span className="text-white font-medium text-sm">
+                            {comment.username || 'Anonymous'}
+                          </span>
+                        ) : (
+                          <button 
+                            onClick={() => window.location.href = `/profile/${comment.username}`}
+                            className="text-white font-medium text-sm hover:text-[#67FFD4] transition-colors cursor-pointer"
+                          >
+                            {comment.username || 'Anonymous'}
+                          </button>
+                        )}
+                        
+                        <span className="text-white/40 text-xs">
+                          {new Date(comment.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <p className="text-white/80 text-sm">{comment.text}</p>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+
         </div>
         {/* Share Panel */}
         {showSharePanel && (
@@ -803,14 +1244,7 @@ export function FilePreview({ file, address, onClose, onFileViewed, showSharePan
                     {file.owner_address.slice(0, 6)}...{file.owner_address.slice(-4)}
                   </p>
                 </div>
-                {file.is_owned !== undefined && (
-                  <div>
-                    <span className="text-gray-300 text-sm">Access:</span>
-                    <p className="text-white">
-                      {file.is_owned ? '👤 You own this file' : '📤 Shared with you'}
-                    </p>
-                  </div>
-                )}
+
                 {!file.is_owned && file.owner_address && (
                   <div>
                     <span className="text-gray-300 text-sm">Shared by:</span>

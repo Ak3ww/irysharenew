@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useAccount } from 'wagmi';
 import { Search, Eye, EyeOff, RefreshCw } from 'lucide-react';
 import { supabase } from '../../utils/supabase';
 import { ProfileSearch } from '../ui/profile-search';
@@ -30,10 +31,13 @@ interface ProfileFile {
   created_at: string;
   updated_at: string;
   owner_address: string;
+  like_count?: number;
+  comment_count?: number;
 }
 export function Profile() {
   const { username } = useParams<{ username: string }>();
   const navigate = useNavigate();
+  const { address: currentUserAddress } = useAccount();
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [profileFiles, setProfileFiles] = useState<ProfileFile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,6 +46,13 @@ export function Profile() {
   const [selectedFile, setSelectedFile] = useState<ProfileFile | null>(null);
   // Extract username from URL (remove @ if present)
   const cleanUsername = username?.startsWith('@') ? username.slice(1) : username;
+
+  // Handle file updates from preview
+  const handleFileUpdated = (fileId: string, updates: Partial<ProfileFile>) => {
+    setProfileFiles(prev => prev.map(file => 
+      file.id === fileId ? { ...file, ...updates } : file
+    ));
+  };
   useEffect(() => {
     if (!cleanUsername) {
       setError('No username provided');
@@ -129,10 +140,58 @@ export function Profile() {
       )
       .subscribe((status) => {
       });
+
+    // Subscribe to changes in file_likes table for real-time like count updates
+    const likesSubscription = supabase
+      .channel(`profile-files-likes-changes-${cleanUsername}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'file_likes'
+        },
+        () => {
+          // Reload profile files when likes change to update counts
+          loadProfile();
+        }
+      )
+      .subscribe();
+
+    // Subscribe to changes in file_comments table for real-time comment count updates
+    const commentsSubscription = supabase
+      .channel(`profile-files-comments-changes-${cleanUsername}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'file_comments'
+        },
+        () => {
+          // Reload profile files when comments change to update counts
+          loadProfile();
+        }
+      )
+      .subscribe();
+
     return () => {
       profileSubscription.unsubscribe();
+      likesSubscription.unsubscribe();
+      commentsSubscription.unsubscribe();
     };
   }, [cleanUsername]);
+
+  // Cleanup effect to reset URL when component unmounts
+  useEffect(() => {
+    return () => {
+      // Reset browser URL if we're on a file preview URL
+      if (window.location.pathname.startsWith('/file/')) {
+        window.history.pushState({}, '', '/');
+        document.title = 'Iryshare - Decentralized File Sharing';
+      }
+    };
+  }, []);
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
   };
@@ -144,9 +203,22 @@ export function Profile() {
       return;
     }
     setSelectedFile(file);
+    
+    // Update browser URL for public, non-encrypted files ONLY
+    if (file.is_public && !file.is_encrypted) {
+      window.history.pushState({}, '', `/file/${file.id}`);
+      // Update page title to show file name
+      document.title = `${file.file_name} - Iryshare - Decentralized File Sharing`;
+    }
   };
   const closePreview = () => {
     setSelectedFile(null);
+    
+    // Reset browser URL and title when preview is closed
+    if (window.location.pathname.startsWith('/file/')) {
+      window.history.pushState({}, '', `/profile/${cleanUsername}`);
+      document.title = `@${cleanUsername} - Iryshare - Decentralized File Sharing`;
+    }
   };
   const handleMenuAction = (action: string, file: ProfileFile) => {
     switch (action) {
@@ -254,7 +326,7 @@ export function Profile() {
   // Error state
   if (error) {
     return (
-      <div className="min-h-screen bg-[#18191a] p-6">
+      <div className="min-h-screen bg-black p-6">
         <div className="max-w-7xl mx-auto">
           <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-12 text-center">
             <div className="text-red-400 text-xl mb-4" style={{ fontFamily: 'Irys2' }}>
@@ -273,7 +345,7 @@ export function Profile() {
   }
   if (!profileData) {
     return (
-      <div className="min-h-screen bg-[#18191a] p-6">
+      <div className="min-h-screen bg-black p-6">
         <div className="max-w-7xl mx-auto">
           <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-12 text-center">
             <div className="text-red-400 text-xl" style={{ fontFamily: 'Irys2' }}>Profile not found</div>
@@ -283,28 +355,30 @@ export function Profile() {
     );
   }
   return (
-    <div className="min-h-screen bg-[#18191a] p-6">
+    <div className="min-h-screen bg-black p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 mb-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div className="flex items-center gap-4">
               <div>
-                <h1 className="text-3xl font-bold text-white mb-1">@{profileData.username}</h1>
-                <p className="text-white/60 text-sm">
+                <h1 className="text-3xl font-bold text-white mb-3" style={{ fontFamily: 'Irys1', letterSpacing: '0.1em' }}>
+                  @{profileData.username.toUpperCase()}
+                </h1>
+                <p className="text-white/60 text-sm" style={{ fontFamily: 'Irys2' }}>
                   {profileData.profile_public === false ? 'Private profile' : 'Public profile and files'}
                 </p>
               </div>
               <div className="flex items-center gap-2">
                 {profileData.profile_public === false ? (
-                  <div className="flex items-center gap-1 text-amber-400 text-sm">
+                  <div className="flex items-center gap-1 text-amber-400 text-sm" style={{ fontFamily: 'Irys2' }}>
                     <EyeOff size={16} />
-                    <span>Private Profile</span>
+                    <span>PRIVATE PROFILE</span>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-1 text-emerald-400 text-sm">
+                  <div className="flex items-center gap-1 text-emerald-400 text-sm" style={{ fontFamily: 'Irys2' }}>
                     <Eye size={16} />
-                    <span>Public Profile</span>
+                    <span>PUBLIC PROFILE</span>
                   </div>
                 )}
               </div>
@@ -315,9 +389,10 @@ export function Profile() {
                 variant="outline"
                 size="sm"
                 className="flex items-center gap-2 bg-white/5 border-white/20 text-white hover:bg-white/10"
+                style={{ fontFamily: 'Irys2' }}
               >
                 <Search size={16} />
-                Search Profiles
+                SEARCH PROFILES
               </Button>
               <Button 
                 variant="outline" 
@@ -325,13 +400,15 @@ export function Profile() {
                 onClick={refreshProfile}
                 disabled={loading}
                 className="flex items-center gap-2 bg-white/5 border-white/20 text-white hover:bg-white/10"
+                style={{ fontFamily: 'Irys2' }}
               >
                 <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-                Refresh
+                REFRESH
               </Button>
             </div>
           </div>
         </div>
+
         {/* Profile Info */}
         <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 mb-6">
           <div className="flex items-center mb-4">
@@ -348,13 +425,13 @@ export function Profile() {
                 </span>
               </div>
             )}
-            <div>
+            <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
                 <h2 className="text-2xl text-white" style={{ fontFamily: 'Irys2' }}>
                   @{profileData.username}
                 </h2>
               </div>
-              <p className="text-white/60" style={{ fontFamily: 'Irys2' }}>
+              <p className="text-white/60 text-sm md:text-base break-all" style={{ fontFamily: 'Irys2' }}>
                 {profileData.address}
               </p>
             </div>
@@ -400,13 +477,25 @@ export function Profile() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {profileFiles.map((file) => (
               <FileCard
-                key={file.id}
+                key={`${file.id}-${file.like_count}-${file.comment_count}`}
                 file={{
                   ...file,
                   is_owned: false, // Profile files are not owned by the viewer
                   recipient_address: undefined,
                   recipient_username: undefined,
-                  shared_at: undefined
+                  shared_at: undefined,
+                  // Ensure all required fields for FileCard are present
+                  owner_address: file.owner_address,
+                  file_url: file.file_url,
+                  file_name: file.file_name,
+                  tags: file.tags,
+                  is_encrypted: file.is_encrypted,
+                  file_size_bytes: file.file_size_bytes,
+                  is_public: file.is_public,
+                  profile_visible: file.profile_visible,
+                  file_type: file.file_type,
+                  created_at: file.created_at,
+                  updated_at: file.updated_at
                 }}
                 onPreview={handlePreview}
                 onMenuAction={handleMenuAction}
@@ -429,10 +518,23 @@ export function Profile() {
             is_owned: false, // Profile files are not owned by the viewer
             recipient_address: undefined,
             recipient_username: undefined,
-            shared_at: undefined
+            shared_at: undefined,
+            // Ensure all required fields for FilePreview are present
+            owner_address: selectedFile.owner_address,
+            file_url: selectedFile.file_url,
+            file_name: selectedFile.file_name,
+            tags: selectedFile.tags,
+            is_encrypted: selectedFile.is_encrypted,
+            file_size_bytes: selectedFile.file_size_bytes,
+            is_public: selectedFile.is_public,
+            profile_visible: selectedFile.profile_visible,
+            file_type: selectedFile.file_type,
+            created_at: selectedFile.created_at,
+            updated_at: selectedFile.updated_at
           }}
           onClose={closePreview}
-          address={profileData?.address || ''}
+          address={currentUserAddress || ''}
+          onFileUpdated={handleFileUpdated}
         />
       )}
     </div>

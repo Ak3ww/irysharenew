@@ -22,6 +22,8 @@ interface FileData {
   recipient_address?: string;
   recipient_username?: string;
   shared_at?: string;
+  like_count?: number;
+  comment_count?: number;
 }
 interface SharedWithMeProps {
   address: string;
@@ -64,7 +66,14 @@ export function SharedWithMe({ address, isConnected, usernameSaved, refreshTrigg
   const [previewFile, setPreviewFile] = useState<FileData | null>(null);
   // Menu state
   const [showShareMenu, setShowShareMenu] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<FileData | null>(null);
+
+  // Handle file updates from preview
+  const handleFileUpdated = (fileId: string, updates: Partial<FileData>) => {
+    setSharedFiles(prev => prev.map(file => 
+      file.id === fileId ? { ...file, ...updates } : file
+    ));
+  };
+
   // Fetch shared files
   const fetchFiles = async () => {
     if (!address || !isConnected || !usernameSaved) return;
@@ -98,23 +107,23 @@ export function SharedWithMe({ address, isConnected, usernameSaved, refreshTrigg
   useEffect(() => {
     fetchFiles();
   }, [address, isConnected, usernameSaved, refreshTrigger, viewedFiles]);
-  // Real-time subscription for shared files
+  // Real-time subscription for new files
   useEffect(() => {
     if (!address || !isConnected || !usernameSaved) return;
     setRealTimeStatus('connecting');
     const normalizedAddress = address.toLowerCase().trim();
-    // Subscribe to changes in the file_shares table for this user
-    const sharesSubscription = supabase
-      .channel('shared-files-changes')
+    // Subscribe to changes in the files table for this user's files
+    const filesSubscription = supabase
+      .channel('my-files-changes')
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'file_shares',
-          filter: `recipient_address=eq.${normalizedAddress}`
+          table: 'files',
+          filter: `owner_address=eq.${normalizedAddress}`
         },
-        (payload) => {
+        () => {
           // Refetch files when there's a change
           fetchFiles();
         }
@@ -126,23 +135,27 @@ export function SharedWithMe({ address, isConnected, usernameSaved, refreshTrigg
           setRealTimeStatus('disconnected');
         }
       });
-    // Also subscribe to changes in the files table (in case files are updated)
-    const filesSubscription = supabase
-      .channel('shared-files-updates')
+
+    // Subscribe to changes in file_shares table (in case files are shared with this user)
+    const sharesSubscription = supabase
+      .channel('my-shares-changes')
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'files'
+          table: 'file_shares',
+          filter: `recipient_address=eq.${normalizedAddress}`
         },
-        (payload) => {
+        () => {
           // Refetch files when there's a change
           fetchFiles();
         }
       )
-      .subscribe((status) => {
-      });
+      .subscribe();
+
+
+
     return () => {
       setRealTimeStatus('disconnected');
       supabase.removeChannel(sharesSubscription);
@@ -207,31 +220,32 @@ export function SharedWithMe({ address, isConnected, usernameSaved, refreshTrigg
     });
     setNewFilesCount(newFiles.length);
     setPreviewFile(file);
+    
+    // Update browser URL for public, non-encrypted files ONLY
+    if (file.is_public && !file.is_encrypted) {
+      window.history.pushState({}, '', `/file/${file.id}`);
+      // Update page title to show file name
+      document.title = `${file.file_name} - IRYSHARE`;
+    }
   };
   const closePreview = () => {
     setPreviewFile(null);
     setShowShareMenu(false);
-    setSelectedFile(null);
-  };
-  // Menu functions
-  const handleMenuClick = (e: React.MouseEvent, file: FileData) => {
-    e.stopPropagation();
-    setSelectedFile(file);
-    setShowShareMenu(!showShareMenu);
-  };
-  const handleMenuAction = (action: string, file: FileData) => {
-    setShowShareMenu(false);
-    setSelectedFile(null);
-    switch (action) {
-      case 'download':
-        // Direct download without preview
-        handleDirectDownload(file);
-        break;
-      case 'share':
-        // For shared files, do nothing (button is disabled)
-        break;
+    
+    // Reset browser URL and title when preview is closed
+    if (window.location.pathname.startsWith('/file/')) {
+      window.history.pushState({}, '', '/shared');
+      document.title = 'Iryshare - Decentralized File Sharing';
     }
   };
+
+  // Menu action wrapper
+  const handleMenuAction = (action: string, file: FileData) => {
+    if (action === 'download') {
+      handleDirectDownload(file);
+    }
+  };
+
   // Direct download function
   const handleDirectDownload = async (file: FileData) => {
     try {
@@ -282,7 +296,6 @@ export function SharedWithMe({ address, isConnected, usernameSaved, refreshTrigg
     const handleClickOutside = () => {
       if (showShareMenu) {
         setShowShareMenu(false);
-        setSelectedFile(null);
       }
     };
     if (showShareMenu) {
@@ -292,25 +305,31 @@ export function SharedWithMe({ address, isConnected, usernameSaved, refreshTrigg
   }, [showShareMenu]);
   if (!isConnected || !usernameSaved) {
     return (
-      <div className="min-h-screen bg-[#18191a] p-6">
+      <div className="min-h-screen bg-black p-6">
         <div className="max-w-7xl mx-auto">
           <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8 text-center">
-            <p className="text-white/80 text-lg font-medium">Please connect your wallet and set a username to view shared files.</p>
+            <p className="text-white/80 text-lg font-medium" style={{ fontFamily: 'Irys2' }}>
+              Please connect your wallet and set a username to view shared files.
+            </p>
           </div>
         </div>
       </div>
     );
   }
   return (
-    <div className="min-h-screen bg-[#18191a] p-6">
+    <div className="min-h-screen bg-black p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 mb-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div className="flex items-center gap-4">
               <div>
-                <h1 className="text-3xl font-bold text-white mb-1" style={{ fontFamily: 'Irys1', letterSpacing: '0.1em'}}>INCOMING FILES</h1>
-                <p className="text-white/60 text-sm">Files shared with you by other users</p>
+                <h1 className="text-3xl font-bold text-white mb-3" style={{ fontFamily: 'Irys1', letterSpacing: '0.1em' }}>
+                  INCOMING FILES
+                </h1>
+                <p className="text-white/60 text-sm" style={{ fontFamily: 'Irys2' }}>
+                  Files shared with you by other users
+                </p>
               </div>
               <div className="flex items-center gap-2">
                 <div 
@@ -322,15 +341,15 @@ export function SharedWithMe({ address, isConnected, usernameSaved, refreshTrigg
                 <span className={`text-xs font-medium ${
                   realTimeStatus === 'connected' ? 'text-emerald-400' : 
                   realTimeStatus === 'connecting' ? 'text-amber-400' : 'text-red-400'
-                }`}>
-                  {realTimeStatus === 'connected' ? 'Live' : 
-                   realTimeStatus === 'connecting' ? 'Connecting...' : 'Offline'}
+                }`} style={{ fontFamily: 'Irys2' }}>
+                  {realTimeStatus === 'connected' ? 'LIVE' : 
+                   realTimeStatus === 'connecting' ? 'CONNECTING...' : 'OFFLINE'}
                 </span>
               </div>
               {newFilesCount > 0 && (
-                <div className="flex items-center gap-2 bg-emerald-600 text-white px-3 py-1 rounded-full text-xs font-medium">
+                <div className="flex items-center gap-2 bg-emerald-600 text-white px-3 py-1 rounded-full text-xs font-medium" style={{ fontFamily: 'Irys2' }}>
                   <Bell size={12} />
-                  <span>{newFilesCount} New Files</span>
+                  <span>{newFilesCount} NEW FILES</span>
                 </div>
               )}
             </div>
@@ -340,12 +359,14 @@ export function SharedWithMe({ address, isConnected, usernameSaved, refreshTrigg
               onClick={refreshFiles}
               disabled={loading}
               className="flex items-center gap-2 bg-white/5 border-white/20 text-white hover:bg-white/10"
+              style={{ fontFamily: 'Irys2' }}
             >
               <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-              Refresh
+              REFRESH
             </Button>
           </div>
         </div>
+
         {/* Search and Filter */}
         <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 mb-6">
           <div className="flex flex-col lg:flex-row gap-4">
@@ -357,6 +378,7 @@ export function SharedWithMe({ address, isConnected, usernameSaved, refreshTrigg
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 text-white placeholder-white/40 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#67FFD4] focus:border-transparent transition-all"
+                style={{ fontFamily: 'Irys2' }}
               />
             </div>
             <div className="flex-shrink-0">
@@ -365,6 +387,7 @@ export function SharedWithMe({ address, isConnected, usernameSaved, refreshTrigg
                 onChange={(e) => setFileTypeFilter(e.target.value)}
                 className="px-4 py-3 bg-white/5 border border-white/10 text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-[#67FFD4] focus:border-transparent transition-all appearance-none cursor-pointer"
                 style={{
+                  fontFamily: 'Irys2',
                   backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e")`,
                   backgroundPosition: 'right 0.5rem center',
                   backgroundRepeat: 'no-repeat',
@@ -372,44 +395,45 @@ export function SharedWithMe({ address, isConnected, usernameSaved, refreshTrigg
                   paddingRight: '2.5rem'
                 }}
               >
-                <option value="all" className="bg-[#1a1a1a] text-white">All Types</option>
-                <option value="images" className="bg-[#1a1a1a] text-white">Images</option>
-                <option value="documents" className="bg-[#1a1a1a] text-white">Documents</option>
-                <option value="videos" className="bg-[#1a1a1a] text-white">Videos</option>
-                <option value="audio" className="bg-[#1a1a1a] text-white">Audio</option>
-                <option value="encrypted" className="bg-[#1a1a1a] text-white">Encrypted</option>
+                <option value="all" className="bg-black text-white">ALL TYPES</option>
+                <option value="images" className="bg-black text-white">IMAGES</option>
+                <option value="documents" className="bg-black text-white">DOCUMENTS</option>
+                <option value="videos" className="bg-black text-white">VIDEOS</option>
+                <option value="audio" className="bg-black text-white">AUDIO</option>
+                <option value="encrypted" className="bg-black text-white">ENCRYPTED</option>
               </select>
             </div>
           </div>
         </div>
+
         {/* Pagination Controls */}
         {filteredFiles.length > 0 && (
           <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 mb-6">
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
               <div className="flex items-center gap-4">
-                <span className="text-white/60 text-sm">
+                <span className="text-white/60 text-sm" style={{ fontFamily: 'Irys2' }}>
                   Showing {startIndex + 1}-{Math.min(endIndex, filteredFiles.length)} of {filteredFiles.length} files
                 </span>
                 <div className="flex items-center gap-2">
-                  <span className="text-white/60 text-sm">Show:</span>
+                  <span className="text-white/60 text-sm" style={{ fontFamily: 'Irys2' }}>Show:</span>
                   <select
                     value={itemsPerPage}
                     onChange={(e) => setItemsPerPage(Number(e.target.value))}
                     className="px-3 py-1 bg-white/5 border border-white/10 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-[#67FFD4] focus:border-transparent transition-all appearance-none cursor-pointer text-sm"
                     style={{
+                      fontFamily: 'Irys2',
                       backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e")`,
                       backgroundPosition: 'right 0.5rem center',
                       backgroundRepeat: 'no-repeat',
                       backgroundSize: '1.5em 1.5em',
-                      paddingRight: '2rem'
+                      paddingRight: '2.5rem'
                     }}
                   >
-                    <option value={5} className="bg-[#1a1a1a] text-white">5</option>
-                    <option value={10} className="bg-[#1a1a1a] text-white">10</option>
-                    <option value={15} className="bg-[#1a1a1a] text-white">15</option>
-                    <option value={20} className="bg-[#1a1a1a] text-white">20</option>
+                    <option value={5} className="bg-black text-white">5</option>
+                    <option value={10} className="bg-black text-white">10</option>
+                    <option value={15} className="bg-black text-white">15</option>
+                    <option value={20} className="bg-black text-white">20</option>
                   </select>
-                  <span className="text-white/60 text-sm">per page</span>
                 </div>
               </div>
               {/* Page Navigation */}
@@ -489,7 +513,7 @@ export function SharedWithMe({ address, isConnected, usernameSaved, refreshTrigg
               const isNew = new Date(file.shared_at || file.created_at) > new Date(Date.now() - 24 * 60 * 60 * 1000) && !viewedFiles.has(file.id);
               return (
                 <FileCard
-                  key={file.id}
+                  key={`${file.id}-${file.like_count}-${file.comment_count}`}
                   file={file}
                   isNew={isNew}
                   onPreview={handlePreview}
@@ -512,6 +536,7 @@ export function SharedWithMe({ address, isConnected, usernameSaved, refreshTrigg
             // Update localStorage
             localStorage.setItem(`viewedFiles_${address.toLowerCase()}`, JSON.stringify(Array.from(newViewedFiles)));
           }}
+          onFileUpdated={handleFileUpdated}
         />
       </div>
     </div>

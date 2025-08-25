@@ -144,7 +144,7 @@ export function Landing({ onLoginSuccess }: LandingProps) {
   };
   if (checkingUser) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] to-[#1a1a1a] flex items-center justify-center">
+      <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
           <div className="text-[#67FFD4] text-xl mb-4 animate-pulse" style={{ fontFamily: 'Irys2' }}>
             Checking your account...
@@ -155,7 +155,7 @@ export function Landing({ onLoginSuccess }: LandingProps) {
     );
   }
   return (
-    <div className="min-h-screen bg-[#18191a] p-4 relative">
+    <div className="min-h-screen bg-black p-4 relative">
       <div className="max-w-4xl w-full mx-auto relative z-10 py-16">
         {/* Logo with Animation - Compact */}
         <div className="text-center mb-8">

@@ -252,33 +252,36 @@ export function SendTokens({ onBack }: SendTokensProps) {
             <ArrowLeft size={20} />
           </button>
           <div className="flex items-center gap-2 min-w-0">
-            <div className="w-8 h-8 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-lg flex items-center justify-center flex-shrink-0">
-              <Send size={16} className="text-white" />
+            <div className="w-8 h-8 bg-[#67FFD4] rounded-lg flex items-center justify-center flex-shrink-0">
+              <Send size={16} className="text-black" />
             </div>
-                         <h1 className="text-white font-bold text-lg sm:text-xl truncate" style={{ fontFamily: 'Irys1', letterSpacing: '0.1em' }}>
-               SEND TOKENS
-             </h1>
+            <h1 className="text-white font-bold text-lg sm:text-xl truncate" style={{ fontFamily: 'Irys1', letterSpacing: '0.1em' }}>
+              SEND TOKENS
+            </h1>
           </div>
         </div>
         <button
           onClick={() => setShowHistory(true)}
           className="flex items-center gap-2 text-white/60 hover:text-white transition-colors p-2 rounded-md hover:bg-white/10 relative z-[10000] flex-shrink-0"
+          style={{ fontFamily: 'Irys2' }}
         >
           <History size={16} />
-          <span className="text-sm">History</span>
+          <span className="text-sm">HISTORY</span>
         </button>
       </div>
+
       <div className="max-w-4xl mx-auto">
         {/* Token Selection */}
         <div className="mb-6">
           <label className="text-[#67FFD4] font-bold block mb-2 text-sm sm:text-base" style={{ fontFamily: 'Irys2' }}>
             SELECT TOKEN
           </label>
-          <select className="w-full bg-white/5 border border-white/10 text-white p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#67FFD4] focus:border-transparent transition-all text-sm sm:text-base">
+          <select className="w-full bg-white/5 border border-white/10 text-white p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#67FFD4] focus:border-transparent transition-all text-sm sm:text-base" style={{ fontFamily: 'Irys2' }}>
             <option value="IRYS">IRYS TOKEN</option>
             <option value="CUSTOM" disabled>Custom Token (Coming Soon)</option>
           </select>
         </div>
+
         {/* Recipients Input */}
         <div className="mb-6">
           <label className="text-[#67FFD4] font-bold block mb-2 text-sm sm:text-base" style={{ fontFamily: 'Irys2' }}>
@@ -290,14 +293,20 @@ export function SendTokens({ onBack }: SendTokensProps) {
             placeholder="Enter address and amount separated by comma, space, or equals sign.&#10;Example:&#10;0x1234... 1.5&#10;0x5678... 2.0&#10;0x9abc... 0.5"
             className="w-full bg-white/5 border border-white/10 text-white p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#67FFD4] focus:border-transparent transition-all h-32 sm:h-40 resize-none font-mono text-xs sm:text-sm"
             disabled={sending}
+            style={{ fontFamily: 'Irys2' }}
           />
         </div>
+
         {/* Preview */}
         {recipients.length > 0 && (
           <div className="mb-6 p-4 sm:p-6 bg-white/5 border border-white/10 rounded-lg">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-2">
-              <span className="text-[#67FFD4] font-bold text-sm sm:text-base">TOTAL RECIPIENTS: {recipients.length}</span>
-              <span className="text-[#67FFD4] font-bold text-sm sm:text-base">TOTAL AMOUNT: {formatBalance(totalAmount)} IRYS</span>
+              <span className="text-[#67FFD4] font-bold text-sm sm:text-base" style={{ fontFamily: 'Irys2' }}>
+                TOTAL RECIPIENTS: {recipients.length}
+              </span>
+              <span className="text-[#67FFD4] font-bold text-sm sm:text-base" style={{ fontFamily: 'Irys2' }}>
+                TOTAL AMOUNT: {formatBalance(totalAmount)} IRYS
+              </span>
             </div>
             {/* Recipients List */}
             <div className="space-y-2 max-h-32 sm:max-h-40 overflow-y-auto">

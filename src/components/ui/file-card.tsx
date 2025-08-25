@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { MoreVertical, Download, Share } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { MoreVertical, Download, Share, Heart, MessageCircle } from 'lucide-react';
+import { supabase } from '../../utils/supabase';
 interface FileData {
   id: string;
   owner_address: string;
@@ -17,15 +18,46 @@ interface FileData {
   recipient_address?: string;
   recipient_username?: string;
   shared_at?: string;
+  like_count?: number;
+  comment_count?: number;
 }
 interface FileCardProps {
   file: FileData;
   isNew?: boolean;
   onPreview: (file: FileData) => void;
   onMenuAction: (action: string, file: FileData) => void;
+  onFileUpdated?: (fileId: string, updates: Partial<FileData>) => void;
 }
 export function FileCard({ file, isNew = false, onPreview, onMenuAction }: FileCardProps) {
   const [showShareMenu, setShowShareMenu] = useState(false);
+  const [likeCount, setLikeCount] = useState(file.like_count || 0);
+  const [commentCount, setCommentCount] = useState(file.comment_count || 0);
+
+  // Fetch real-time counts for public files
+  useEffect(() => {
+    if (file.is_public && !file.is_encrypted) {
+      // Fetch like count
+      const fetchLikeCount = async () => {
+        const { count } = await supabase
+          .from('file_likes')
+          .select('*', { count: 'exact', head: true })
+          .eq('file_id', file.id);
+        setLikeCount(count || 0);
+      };
+
+      // Fetch comment count
+      const fetchCommentCount = async () => {
+        const { count } = await supabase
+          .from('file_comments')
+          .select('*', { count: 'exact', head: true })
+          .eq('file_id', file.id);
+        setCommentCount(count || 0);
+      };
+
+      fetchLikeCount();
+      fetchCommentCount();
+    }
+  }, [file.id, file.is_public, file.is_encrypted]);
   // File type helpers
   const isImage = (file: FileData) => {
     const name = file?.file_name?.toLowerCase() || '';
@@ -63,6 +95,9 @@ export function FileCard({ file, isNew = false, onPreview, onMenuAction }: FileC
     setShowShareMenu(false);
     onMenuAction(action, file);
   };
+
+
+
   return (
     <div
       className={`group relative bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 transition-all duration-300 hover:bg-white/10 hover:border-white/20 hover:scale-105 cursor-pointer ${
@@ -112,6 +147,21 @@ export function FileCard({ file, isNew = false, onPreview, onMenuAction }: FileC
           </div>
         )}
       </div>
+
+      {/* Like and Comment Icons - Only for Public Files */}
+      {file.is_public && !file.is_encrypted && (
+        <div className="flex items-center gap-4 mt-3 pt-3 border-t border-white/10">
+          <div className="flex items-center gap-2 text-white/60 hover:text-white transition-colors">
+            <Heart size={16} className="hover:text-red-400 transition-colors" />
+            <span className="text-xs">{likeCount}</span>
+          </div>
+          <div className="flex items-center gap-2 text-white/60 hover:text-white transition-colors">
+            <MessageCircle size={16} className="hover:text-blue-400 transition-colors" />
+            <span className="text-xs">{commentCount}</span>
+          </div>
+        </div>
+      )}
+
       {/* 3-Dot Menu */}
       <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity z-20">
         <div className="relative">
@@ -124,7 +174,7 @@ export function FileCard({ file, isNew = false, onPreview, onMenuAction }: FileC
           </button>
           {/* Dropdown Menu */}
           {showShareMenu && (
-            <div className="absolute right-0 top-8 bg-[#1A1A1A] border border-white/20 rounded-lg shadow-lg z-30 min-w-[120px]">
+            <div className="absolute right-0 top-8 bg-black border border-white/20 rounded-lg shadow-lg z-30 min-w-[120px]">
               <button
                 onClick={(e) => {
                   e.stopPropagation();

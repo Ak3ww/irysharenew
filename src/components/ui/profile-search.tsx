@@ -52,38 +52,70 @@ export function ProfileSearch({ isOpen, onClose, currentAddress }: ProfileSearch
       return;
     }
     setIsSearching(true);
-    searchTimeoutRef.current = setTimeout(async () => {
-      try {
-        const query = searchQuery.trim().toLowerCase();
-        // Search by username (partial match)
-        const { data, error } = await supabase
-          .from('usernames')
-          .select('*')
-          .ilike('username', `%${query}%`)
-          .limit(10);
-        if (error) {
-          console.error('Search error:', error);
-          setSearchResults([]);
-        } else {
-          // Filter out current user and sort by relevance
-          const filtered = (data || [])
-            .filter(profile => profile.address.toLowerCase() !== currentAddress?.toLowerCase())
-            .sort((a, b) => {
-              // Exact matches first
-              if (a.username.toLowerCase() === query) return -1;
-              if (b.username.toLowerCase() === query) return 1;
-              // Then by username length (shorter = more relevant)
-              return a.username.length - b.username.length;
-            });
-          setSearchResults(filtered);
-        }
-      } catch (error) {
-        console.error('Search error:', error);
-        setSearchResults([]);
-      } finally {
-        setIsSearching(false);
-      }
-    }, 300);
+            searchTimeoutRef.current = setTimeout(async () => {
+          try {
+            const query = searchQuery.trim().toLowerCase();
+            
+            // Check if query looks like a wallet address (starts with 0x and has length)
+            const isWalletAddress = query.startsWith('0x') && query.length >= 10;
+            
+            let data;
+            let error;
+            
+            if (isWalletAddress) {
+              // Search by wallet address (exact or partial match)
+              const { data: addressData, error: addressError } = await supabase
+                .from('usernames')
+                .select('*')
+                .ilike('address', `%${query}%`)
+                .limit(10);
+              data = addressData;
+              error = addressError;
+            } else {
+              // Search by username (partial match)
+              const { data: usernameData, error: usernameError } = await supabase
+                .from('usernames')
+                .select('*')
+                .ilike('username', `%${query}%`)
+                .limit(10);
+              data = usernameData;
+              error = usernameError;
+            }
+            
+            if (error) {
+              console.error('Search error:', error);
+              setSearchResults([]);
+            } else {
+              // Filter out current user and sort by relevance
+              const filtered = (data || [])
+                .filter(profile => profile.address.toLowerCase() !== currentAddress?.toLowerCase())
+                .sort((a, b) => {
+                  if (isWalletAddress) {
+                    // For wallet searches: exact address matches first
+                    if (a.address.toLowerCase() === query) return -1;
+                    if (b.address.toLowerCase() === query) return 1;
+                    // Then by how much of the address matches
+                    const aMatch = a.address.toLowerCase().startsWith(query) ? 1 : 0;
+                    const bMatch = b.address.toLowerCase().startsWith(query) ? 1 : 0;
+                    if (aMatch !== bMatch) return bMatch - aMatch;
+                  } else {
+                    // For username searches: exact matches first
+                    if (a.username.toLowerCase() === query) return -1;
+                    if (b.username.toLowerCase() === query) return 1;
+                    // Then by username length (shorter = more relevant)
+                    return a.username.length - b.username.length;
+                  }
+                  return 0;
+                });
+              setSearchResults(filtered);
+            }
+          } catch (error) {
+            console.error('Search error:', error);
+            setSearchResults([]);
+          } finally {
+            setIsSearching(false);
+          }
+        }, 300);
     return () => {
       if (searchTimeoutRef.current) {
         clearTimeout(searchTimeoutRef.current);
@@ -147,7 +179,7 @@ export function ProfileSearch({ isOpen, onClose, currentAddress }: ProfileSearch
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by username..."
+            placeholder="Search by username or wallet address..."
             className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 text-white placeholder-white/40 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#67FFD4] focus:border-transparent transition-all"
             autoFocus
           />
@@ -210,7 +242,7 @@ export function ProfileSearch({ isOpen, onClose, currentAddress }: ProfileSearch
               <div className="text-center text-white/60 py-8">
                 <User size={48} className="mx-auto mb-4 opacity-50" />
                 <p>No profiles found</p>
-                <p className="text-sm">Try a different username</p>
+                <p className="text-sm">Try a different username or wallet address</p>
               </div>
             )}
           </div>
@@ -236,7 +268,7 @@ export function ProfileSearch({ isOpen, onClose, currentAddress }: ProfileSearch
           <div className="text-center text-white/60 py-8">
             <Search size={48} className="mx-auto mb-4 opacity-50" />
             <p>Search for profiles to discover public galleries</p>
-            <p className="text-sm">Type a username to get started</p>
+            <p className="text-sm">Type a username or wallet address to get started</p>
           </div>
         )}
       </div>

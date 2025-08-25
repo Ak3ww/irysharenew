@@ -23,6 +23,8 @@ interface FileData {
   recipient_address?: string;
   recipient_username?: string;
   shared_at?: string;
+  like_count?: number;
+  comment_count?: number;
 }
 interface MyFilesProps {
   address: string;
@@ -43,6 +45,18 @@ export function MyFiles({ address, isConnected, usernameSaved, refreshTrigger = 
   const [previewFile, setPreviewFile] = useState<FileData | null>(null);
   const [showSharePanelOnOpen, setShowSharePanelOnOpen] = useState(false);
   const [shareModalFile, setShareModalFile] = useState<FileData | null>(null);
+
+  // Handle file updates from preview
+  const handleFileUpdated = (fileId: string, updates: Partial<FileData>) => {
+    console.log('MyFiles: handleFileUpdated called with:', { fileId, updates });
+    setMyFiles(prev => {
+      const updated = prev.map(file => 
+        file.id === fileId ? { ...file, ...updates } : file
+      );
+      console.log('MyFiles: Updated files:', updated);
+      return updated;
+    });
+  };
   // Fetch my files
   const fetchFiles = async () => {
     if (!address || !isConnected || !usernameSaved) return;
@@ -110,10 +124,47 @@ export function MyFiles({ address, isConnected, usernameSaved, refreshTrigger = 
       .subscribe((status) => {
         // Handle subscription status silently
       });
+
+    // Subscribe to changes in file_likes table for real-time like count updates
+    const likesSubscription = supabase
+      .channel('my-files-likes-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'file_likes'
+        },
+        (payload) => {
+          // Refetch files when likes change to update counts
+          fetchFiles();
+        }
+      )
+      .subscribe();
+
+    // Subscribe to changes in file_comments table for real-time comment count updates
+    const commentsSubscription = supabase
+      .channel('my-files-comments-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'file_comments'
+        },
+        (payload) => {
+          // Refetch files when comments change to update counts
+          fetchFiles();
+        }
+      )
+      .subscribe();
+
     return () => {
       setRealTimeStatus('disconnected');
       supabase.removeChannel(filesSubscription);
       supabase.removeChannel(sharesSubscription);
+      supabase.removeChannel(likesSubscription);
+      supabase.removeChannel(commentsSubscription);
     };
   }, [address, isConnected, usernameSaved]);
   // File type helpers
@@ -164,10 +215,23 @@ export function MyFiles({ address, isConnected, usernameSaved, refreshTrigger = 
   const handlePreview = (file: FileData) => {
     setPreviewFile(file);
     setShowSharePanelOnOpen(false);
+    
+    // Update browser URL for public, non-encrypted files ONLY
+    if (file.is_public && !file.is_encrypted) {
+      window.history.pushState({}, '', `/file/${file.id}`);
+      // Update page title to show file name
+      document.title = `${file.file_name} - IRYSHARE`;
+    }
   };
   const closePreview = () => {
     setPreviewFile(null);
     setShowSharePanelOnOpen(false);
+    
+    // Reset browser URL and title when preview is closed
+    if (window.location.pathname.startsWith('/file/')) {
+      window.history.pushState({}, '', '/myfiles');
+      document.title = 'Iryshare - Decentralized File Sharing';
+    }
   };
   // Menu action handler
   const handleMenuAction = (action: string, file: FileData) => {
@@ -220,25 +284,31 @@ export function MyFiles({ address, isConnected, usernameSaved, refreshTrigger = 
   };
   if (!isConnected || !usernameSaved) {
     return (
-      <div className="min-h-screen bg-[#18191a] p-6">
+      <div className="min-h-screen bg-black p-6">
         <div className="max-w-7xl mx-auto">
           <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8 text-center">
-            <p className="text-white/80 text-lg font-medium">Please connect your wallet and set a username to view your files.</p>
+            <p className="text-white/80 text-lg font-medium" style={{ fontFamily: 'Irys2' }}>
+              Please connect your wallet and set a username to view your files.
+            </p>
           </div>
         </div>
       </div>
     );
   }
   return (
-    <div className="min-h-screen bg-[#18191a] p-6">
+    <div className="min-h-screen bg-black p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 mb-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div className="flex items-center gap-4">
               <div>
-                <h1 className="text-3xl font-bold text-white mb-1" style={{ fontFamily: 'Irys1', letterSpacing: '0.1em' }}>FILE LIBRARY</h1>
-                <p className="text-white/60 text-sm" style={{ fontFamily: 'Irys2' }}>Manage and preview your uploaded files</p>
+                <h1 className="text-3xl font-bold text-white mb-3" style={{ fontFamily: 'Irys1', letterSpacing: '0.1em' }}>
+                  FILE LIBRARY
+                </h1>
+                <p className="text-white/60 text-sm" style={{ fontFamily: 'Irys2' }}>
+                  Manage and preview your uploaded files
+                </p>
               </div>
               <div className="flex items-center gap-2">
                 <div 
@@ -250,9 +320,9 @@ export function MyFiles({ address, isConnected, usernameSaved, refreshTrigger = 
                 <span className={`text-xs font-medium ${
                   realTimeStatus === 'connected' ? 'text-emerald-400' : 
                   realTimeStatus === 'connecting' ? 'text-amber-400' : 'text-red-400'
-                }`}>
-                  {realTimeStatus === 'connected' ? 'Live' : 
-                   realTimeStatus === 'connecting' ? 'Connecting...' : 'Offline'}
+                }`} style={{ fontFamily: 'Irys2' }}>
+                  {realTimeStatus === 'connected' ? 'LIVE' : 
+                   realTimeStatus === 'connecting' ? 'CONNECTING...' : 'OFFLINE'}
                 </span>
               </div>
             </div>
@@ -262,12 +332,14 @@ export function MyFiles({ address, isConnected, usernameSaved, refreshTrigger = 
               onClick={refreshFiles}
               disabled={loading}
               className="flex items-center gap-2 bg-white/5 border-white/20 text-white hover:bg-white/10"
+              style={{ fontFamily: 'Irys2' }}
             >
               <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-              Refresh
+              REFRESH
             </Button>
           </div>
         </div>
+
         {/* Search and Filter */}
         <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 mb-6">
           <div className="flex flex-col lg:flex-row gap-4">
@@ -279,6 +351,7 @@ export function MyFiles({ address, isConnected, usernameSaved, refreshTrigger = 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 text-white placeholder-white/40 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#67FFD4] focus:border-transparent transition-all"
+                style={{ fontFamily: 'Irys2' }}
               />
             </div>
             <div className="flex-shrink-0">
@@ -287,6 +360,7 @@ export function MyFiles({ address, isConnected, usernameSaved, refreshTrigger = 
                 onChange={(e) => setFileTypeFilter(e.target.value)}
                 className="px-4 py-3 bg-white/5 border border-white/10 text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-[#67FFD4] focus:border-transparent transition-all appearance-none cursor-pointer"
                 style={{
+                  fontFamily: 'Irys2',
                   backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e")`,
                   backgroundPosition: 'right 0.5rem center',
                   backgroundRepeat: 'no-repeat',
@@ -294,12 +368,12 @@ export function MyFiles({ address, isConnected, usernameSaved, refreshTrigger = 
                   paddingRight: '2.5rem'
                 }}
               >
-                <option value="all" className="bg-[#1a1a1a] text-white">All Types</option>
-                <option value="images" className="bg-[#1a1a1a] text-white">Images</option>
-                <option value="documents" className="bg-[#1a1a1a] text-white">Documents</option>
-                <option value="videos" className="bg-[#1a1a1a] text-white">Videos</option>
-                <option value="audio" className="bg-[#1a1a1a] text-white">Audio</option>
-                <option value="encrypted" className="bg-[#1a1a1a] text-white">Encrypted</option>
+                <option value="all" className="bg-black text-white">ALL TYPES</option>
+                <option value="images" className="bg-black text-white">IMAGES</option>
+                <option value="documents" className="bg-black text-white">DOCUMENTS</option>
+                <option value="videos" className="bg-black text-white">VIDEOS</option>
+                <option value="audio" className="bg-black text-white">AUDIO</option>
+                <option value="encrypted" className="bg-black text-white">ENCRYPTED</option>
               </select>
             </div>
           </div>
@@ -326,10 +400,10 @@ export function MyFiles({ address, isConnected, usernameSaved, refreshTrigger = 
                       paddingRight: '2rem'
                     }}
                   >
-                    <option value={5} className="bg-[#1a1a1a] text-white">5</option>
-                    <option value={10} className="bg-[#1a1a1a] text-white">10</option>
-                    <option value={15} className="bg-[#1a1a1a] text-white">15</option>
-                    <option value={20} className="bg-[#1a1a1a] text-white">20</option>
+                    <option value={5} className="bg-black text-white">5</option>
+                    <option value={10} className="bg-black text-white">10</option>
+                    <option value={15} className="bg-black text-white">15</option>
+                    <option value={20} className="bg-black text-white">20</option>
                   </select>
                   <span className="text-white/60 text-sm">per page</span>
                 </div>
@@ -409,7 +483,7 @@ export function MyFiles({ address, isConnected, usernameSaved, refreshTrigger = 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {paginatedFiles.map(file => (
               <FileCard
-                key={file.id}
+                key={`${file.id}-${file.like_count}-${file.comment_count}`}
                 file={file}
                 onPreview={handlePreview}
                 onMenuAction={handleMenuAction}
@@ -423,6 +497,7 @@ export function MyFiles({ address, isConnected, usernameSaved, refreshTrigger = 
           address={address}
           onClose={closePreview}
           showSharePanelOnOpen={showSharePanelOnOpen}
+          onFileUpdated={handleFileUpdated}
         />
         {/* Share Modal */}
         <ShareModal

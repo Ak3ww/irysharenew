@@ -19,7 +19,7 @@ export function MobileNav({ activePage, onPageChange, address }: MobileNavProps)
     <>
       {/* Mobile Bottom Navigation */}
       <div className="fixed bottom-0 left-0 right-0 bg-black/90 backdrop-blur-xl border-t border-white/10 z-50">
-        <div className="flex items-center justify-around px-4 py-2">
+        <div className="flex items-center justify-around px-4 py-3">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activePage === item.id;
@@ -27,25 +27,31 @@ export function MobileNav({ activePage, onPageChange, address }: MobileNavProps)
               <button
                 key={item.id}
                 onClick={() => onPageChange(item.id)}
-                className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-all duration-200 ${
+                className={`flex flex-col items-center gap-2 p-3 rounded-lg transition-all duration-200 ${
                   isActive 
                     ? 'text-[#67FFD4] bg-[#67FFD4]/10' 
                     : 'text-white/60 hover:text-white hover:bg-white/5'
                 }`}
               >
                 <Icon size={20} />
-                <span className="text-xs font-medium">{item.label}</span>
+                <span className="text-xs font-medium" style={{ fontFamily: 'Irys2' }}>
+                  {item.label.toUpperCase()}
+                </span>
               </button>
             );
           })}
           {/* Search Button */}
           <button
             onClick={() => setShowProfileSearch(true)}
-            className="flex flex-col items-center gap-1 p-2 rounded-lg transition-all duration-200 text-white/60 hover:text-white hover:bg-white/5"
+            className="flex flex-col items-center gap-2 p-3 rounded-lg transition-all duration-200 text-white/60 hover:text-white hover:bg-white/5"
           >
             <Search size={20} />
-            <span className="text-xs font-medium">Search</span>
+            <span className="text-xs font-medium" style={{ fontFamily: 'Irys2' }}>
+              SEARCH
+            </span>
           </button>
+          
+
         </div>
       </div>
       {/* Profile Search Modal */}
@@ -54,6 +60,8 @@ export function MobileNav({ activePage, onPageChange, address }: MobileNavProps)
         onClose={() => setShowProfileSearch(false)}
         currentAddress={address}
       />
+      
+
     </>
   );
 } 

@@ -77,7 +77,7 @@ export async function uploadEncryptedToIrys(
     return receipt.id;
 
   } catch (error) {
-    console.error('Upload error:', error);
+    // Error handled silently
     throw new Error(`Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
@@ -95,7 +95,7 @@ export async function downloadAndDecryptFromIrys(
     const response = await fetch(`https://gateway.irys.xyz/${transactionId}`);
     
     if (!response.ok) {
-      console.error('❌ Download failed:', response.statusText);
+      // Error handled silently
       throw new Error(`Failed to download file: ${response.statusText}`);
     }
 
@@ -109,46 +109,38 @@ export async function downloadAndDecryptFromIrys(
       data = await response.json();
 
     } catch (jsonError) {
-      console.error('❌ JSON parse error:', jsonError);
+      // Error handled silently
       // If JSON parsing fails, it might be an old Lit Protocol file
       throw new Error('Legacy file format detected. This file was encrypted with the old system and cannot be decrypted with the new AES system.');
     }
 
     const { encryptedFile, metadata } = data;
 
-
     if (onProgress) onProgress(50);
 
     // Decrypt the file data
 
-    
     let decryptedData: ArrayBuffer;
     
     // Try to use the shared decryption key first (for shared files)
     if (metadata.decryptionKey) {
-      console.log('🔑 Using shared decryption key for shared file...');
       try {
         decryptedData = await decryptFileDataWithSharedKey(encryptedFile, metadata.decryptionKey);
-        console.log('✅ Shared key decryption successful');
-      } catch (error) {
-        console.log('⚠️ Shared key decryption failed, trying address-based decryption...');
-        console.error('Shared key error:', error);
-        decryptedData = await decryptFileData(encryptedFile, userAddress);
-      }
+        } catch (error) {
+          // Error handled silently
+          decryptedData = await decryptFileData(encryptedFile, userAddress);
+        }
     } else {
       // Fall back to address-based decryption (for private files)
-      console.log('🔑 Using address-based decryption for private file...');
       decryptedData = await decryptFileData(encryptedFile, userAddress);
     }
     
-    console.log('✅ Decryption completed successfully');
-
     if (onProgress) onProgress(100);
 
     return decryptedData;
 
   } catch (error) {
-    console.error('❌ Download/decrypt error:', error);
+    // Error handled silently
     throw new Error(`Download/Decrypt failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
@@ -160,31 +152,20 @@ export async function updateFileAccessControl(
   ownerAddress: string
 ): Promise<string> {
   try {
-    console.log('🔍 Starting updateFileAccessControl for transaction:', transactionId);
-    console.log('📋 New recipients:', newRecipientAddresses);
-    console.log('👤 Owner address:', ownerAddress);
-    
     // Download current encrypted file
     const response = await fetch(`https://gateway.irys.xyz/${transactionId}`);
-    console.log('📥 Response status:', response.status);
-    
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('❌ Gateway error response:', errorText);
+      // Error handled silently
       throw new Error(`Failed to download file: ${response.statusText} - ${errorText}`);
     }
 
     const responseText = await response.text();
-    console.log('📄 Response text length:', responseText.length);
-    
     let data;
     try {
       data = JSON.parse(responseText);
     } catch (parseError) {
-      console.error('❌ JSON parse error:', parseError);
-      console.error('❌ Response text:', responseText);
-      
-      // Check if this is an old Lit Protocol file
+      // Error handled silently// Error handled silently// Check if this is an old Lit Protocol file
       if (responseText.includes('<!doctype') || responseText.includes('<html')) {
         throw new Error('Legacy file format detected. This file was encrypted with the old Lit Protocol system and cannot be updated with the new AES system. Please re-upload the file.');
       }
@@ -193,17 +174,10 @@ export async function updateFileAccessControl(
     }
     
     const { encryptedFile, metadata } = data;
-    console.log('✅ Successfully parsed encrypted file data');
-    console.log('🔐 File version:', encryptedFile.version || 'legacy');
-    
     // Check if this is a new AES file (version 3.0+) with shared key
     if (encryptedFile.version && encryptedFile.version >= "3.0") {
-      console.log('🆕 Handling version 3.0+ file with shared key approach...');
-      
       // For version 3.0+, we simply update the metadata with new recipients
       // The shared key approach means all recipients use the same decryptionKey
-      console.log('🔑 Using shared key approach - no re-encryption needed');
-      
       const updatedMetadata = {
         ...metadata,
         recipientAddresses: [...new Set([...(metadata.recipientAddresses || []), ...newRecipientAddresses.map(addr => addr.toLowerCase())])],
@@ -220,14 +194,10 @@ export async function updateFileAccessControl(
         .devnet();
       
       await irysUploader.ready();
-      console.log('🚀 Irys uploader ready');
-
       const dataToUpload = JSON.stringify({
         encryptedFile, // Keep the same encrypted file
         metadata: updatedMetadata // Update metadata with new recipients
       });
-      console.log('📤 Uploading file with updated recipient list...');
-      
       const receipt = await irysUploader.upload(dataToUpload, {
         tags: [
           { name: "Content-Type", value: "application/json" },
@@ -239,29 +209,21 @@ export async function updateFileAccessControl(
         ]
       });
 
-      console.log('✅ File updated successfully with new recipient list, ID:', receipt.id);
       return receipt.id;
       
     } else {
       // Handle legacy files (version < 3.0) with individual keys
-      console.log('🔄 Handling legacy file with individual key approach...');
-      
       if (!encryptedFile.encryptedKeys || typeof encryptedFile.encryptedKeys !== 'object') {
         throw new Error('Legacy file format: encryptedKeys not found or invalid');
       }
-      
-      console.log('🔐 Encrypted keys count:', Object.keys(encryptedFile.encryptedKeys).length);
-      console.log('🔑 Available addresses:', Object.keys(encryptedFile.encryptedKeys));
 
       // Get the original AES key by decrypting it with the owner's signature
       const originalEncryptedKey = encryptedFile.encryptedKeys[ownerAddress.toLowerCase()];
       if (!originalEncryptedKey) {
-        console.error('❌ Owner address not found in encrypted keys:', ownerAddress.toLowerCase());
-        console.error('❌ Available addresses:', Object.keys(encryptedFile.encryptedKeys));
+        // Error handled silently);
+        // Error handled silently);
         throw new Error('Cannot find original AES key for owner');
       }
-      console.log('🔑 Found original encrypted key for owner');
-
       // Decrypt the original AES key using the owner's address-based key derivation
       const originalKeyBytes = base64ToArrayBuffer(originalEncryptedKey);
       const iv = new Uint8Array(base64ToArrayBuffer(encryptedFile.iv));
@@ -284,8 +246,6 @@ export async function updateFileAccessControl(
         derivedKey,
         originalKeyBytes
       );
-      console.log('✅ Original AES key decrypted successfully');
-
       // Create updated encrypted file with new recipients
       const updatedEncryptedFile: EncryptedFile = {
         encryptedData: encryptedFile.encryptedData,
@@ -298,8 +258,6 @@ export async function updateFileAccessControl(
 
       // Add new recipients with individual key derivation
       for (const address of newRecipientAddresses) {
-        console.log(`🔐 Adding recipient: ${address}`);
-        
         // Create a unique key derivation for each address
         const addressKey = `file_key:${address.toLowerCase()}`;
         const keyBytes = new TextEncoder().encode(addressKey);
@@ -323,10 +281,7 @@ export async function updateFileAccessControl(
         if (updatedEncryptedFile.encryptedKeys) {
           updatedEncryptedFile.encryptedKeys[address.toLowerCase()] = arrayBufferToBase64(encryptedKey);
         }
-        console.log(`✅ Added recipient: ${address} with individual key`);
-      }
-
-      console.log('📦 Updated encrypted file object created');
+        }
 
       // Upload the updated encrypted file
       const rpcURL = "https://1rpc.io/sepolia";
@@ -338,8 +293,6 @@ export async function updateFileAccessControl(
         .devnet();
       
       await irysUploader.ready();
-      console.log('🚀 Irys uploader ready');
-
       const updatedMetadata = {
         ...metadata,
         recipientAddresses: [...new Set([...(metadata.recipientAddresses || []), ...newRecipientAddresses.map(addr => addr.toLowerCase())])],
@@ -350,8 +303,6 @@ export async function updateFileAccessControl(
         encryptedFile: updatedEncryptedFile,
         metadata: updatedMetadata
       });
-      console.log('📤 Uploading updated file to Irys...');
-      
       const receipt = await irysUploader.upload(dataToUpload, {
         tags: [
           { name: "Content-Type", value: "application/json" },
@@ -363,12 +314,11 @@ export async function updateFileAccessControl(
         ]
       });
 
-      console.log('✅ Legacy file updated successfully with ID:', receipt.id);
       return receipt.id;
     }
 
   } catch (error) {
-    console.error('❌ Update access control error:', error);
+    // Error handled silently
     throw new Error(`Update failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
