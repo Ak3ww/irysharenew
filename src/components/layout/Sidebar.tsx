@@ -9,8 +9,9 @@ interface SidebarItemProps {
   isActive?: boolean;
   onClick?: () => void;
   notificationCount?: number;
+  isNew?: boolean;
 }
-const SidebarItem = ({ icon, label, isActive = false, onClick, notificationCount }: SidebarItemProps) => (
+const SidebarItem = ({ icon, label, isActive = false, onClick, notificationCount, isNew }: SidebarItemProps) => (
   <button 
     className={`w-full flex items-center gap-3 p-3 rounded-md transition-colors relative ${
       isActive ? 'bg-[#67FFD4]/20 text-[#67FFD4]' : 'text-gray-300 hover:bg-gray-800 hover:text-white'
@@ -26,6 +27,11 @@ const SidebarItem = ({ icon, label, isActive = false, onClick, notificationCount
       )}
     </div>
     <span className="text-sm font-medium flex-1 text-left" style={{ fontFamily: 'Irys1', letterSpacing: '0.1em' }}>{label}</span>
+    {isNew && (
+      <div className="ml-auto bg-gradient-to-r from-[#67FFD4] to-[#00B4D8] text-black text-xs px-2 py-1 rounded-full font-bold animate-pulse">
+        NEW
+      </div>
+    )}
   </button>
 );
 interface SidebarProps {
@@ -219,12 +225,14 @@ export function Sidebar({ activePage, onPageChange, address, isCollapsed = false
           label="LINKTREE"
           isActive={activePage === 'linktree'}
           onClick={() => onPageChange('linktree')}
+          isNew={true}
         />
                 <SidebarItem
           icon={<Settings size={20} />}
           label="PROFILE SETTINGS"
           isActive={activePage === 'profile'}
           onClick={() => onPageChange('profile')}
+          isNew={true}
         />
       </div>
       {/* Disconnect Button */}
