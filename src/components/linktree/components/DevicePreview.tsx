@@ -100,6 +100,7 @@ export default function DevicePreview() {
         {/* Profile Header - Compact for Mobile Frame */}
         <div className="text-center mb-3">
           <img
+            key={userStore.linktree_avatar || userStore.image || 'default'} // Force re-render when avatar changes
             className="rounded-full w-[70px] h-[70px] mx-auto mt-6 object-cover shadow-lg"
             src={userStore.linktree_avatar || userStore.image || '/default-avatar.png'}
             alt="Profile"

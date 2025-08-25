@@ -802,6 +802,9 @@ export function LinktreeProvider({ children }: { children: ReactNode }) {
       console.log('🔄 DEBUG: Updating local state...');
       setLinktreeAvatar(publicUrl);
       
+      // Force a re-render by updating the main image state as well
+      setImage(publicUrl);
+      
       console.log('🔄 DEBUG: Calling updateLinktreeProfile...');
       await updateLinktreeProfile(linktree_username, linktree_bio, publicUrl);
       
@@ -840,11 +843,19 @@ export function LinktreeProvider({ children }: { children: ReactNode }) {
       }
       
       console.log('🎉 DEBUG: Avatar changed successfully:', publicUrl);
+      
+      // Force a final state update to ensure UI re-renders
+      setTimeout(() => {
+        setLinktreeAvatar(publicUrl);
+        setImage(publicUrl);
+        console.log('🔄 DEBUG: Final state update triggered for UI refresh');
+      }, 100);
+      
       return publicUrl;
     } catch (error) {
       console.error('❌ DEBUG: Error changing avatar:', error);
       console.error('❌ DEBUG: Error type:', typeof error);
-      console.error('❌ DEBUG: Error message:', error?.message);
+      console.error('❌ DEBUG: Error message:', error && typeof error === 'object' && 'message' in error ? (error as Error).message : 'No message available');
       throw error;
     }
   };

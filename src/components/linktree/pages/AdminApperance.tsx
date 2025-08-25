@@ -363,8 +363,9 @@ export default function AdminApperance() {
                   <div className="w-20 h-20 bg-white/10 rounded-full flex items-center justify-center border-2 border-white/20">
                     {userStore.linktree_avatar ? (
                       <img 
+                        key={userStore.linktree_avatar} // Force re-render when avatar changes
                         src={userStore.linktree_avatar} 
-                    alt="Profile"
+                        alt="Profile"
                         className="w-full h-full rounded-full object-cover"
                       />
                     ) : (
