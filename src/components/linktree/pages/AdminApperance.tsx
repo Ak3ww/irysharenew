@@ -277,31 +277,53 @@ export default function AdminApperance() {
 
   const handleAvatarChange = async (file: File) => {
     try {
+      console.log('🔄 DEBUG: handleAvatarChange called with file:', {
+        name: file.name,
+        size: file.size,
+        type: file.type
+      });
+      
       const reader = new FileReader();
       reader.onload = () => {
+        console.log('✅ DEBUG: File read successfully, opening cropper...');
         setCroppedAvatarUrl(reader.result as string);
         setIsCropperOpen(true);
       };
       reader.readAsDataURL(file);
     } catch (error) {
-      console.error('Error reading file:', error);
+      console.error('❌ DEBUG: Error reading file:', error);
       alert('Error reading file. Please try again.');
     }
   };
 
   const handleCroppedAvatar = async (croppedImageUrl: string) => {
     try {
+      console.log('🔄 DEBUG: handleCroppedAvatar called with cropped image URL');
+      
       // Convert base64 to File
       const response = await fetch(croppedImageUrl);
       const blob = await response.blob();
       const file = new File([blob], 'cropped-avatar.jpg', { type: 'image/jpeg' });
       
+      console.log('🔄 DEBUG: Converted to file, calling userStore.changeAvatar...');
+      console.log('🔄 DEBUG: File details:', {
+        name: file.name,
+        size: file.size,
+        type: file.type
+      });
+      
       await userStore.changeAvatar(file);
+      console.log('✅ DEBUG: changeAvatar completed successfully');
+      
       setIsCropperOpen(false);
       setCroppedAvatarUrl(null);
-      console.log('Cropped avatar saved:', userStore.linktree_avatar);
+      console.log('🎉 DEBUG: Final linktree_avatar value:', userStore.linktree_avatar);
     } catch (error) {
-      console.error('Error saving cropped avatar:', error);
+      console.error('❌ DEBUG: Error saving cropped avatar:', error);
+      console.error('❌ DEBUG: Error details:', {
+        message: error?.message,
+        type: typeof error
+      });
       alert('Failed to save cropped avatar. Please try again.');
     }
   };

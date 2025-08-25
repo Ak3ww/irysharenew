@@ -729,10 +729,19 @@ export function LinktreeProvider({ children }: { children: ReactNode }) {
   // Handle avatar change with storage cleanup
   const changeAvatar = async (newAvatarFile: File): Promise<string> => {
     try {
+      console.log('🔄 DEBUG: Starting avatar change process...');
+      console.log('🔄 DEBUG: Address:', address);
+      console.log('🔄 DEBUG: File details:', {
+        name: newAvatarFile.name,
+        size: newAvatarFile.size,
+        type: newAvatarFile.type
+      });
+      
       if (!address) throw new Error('No address available');
       
       // Delete old avatar from storage if it exists
       if (linktree_avatar) {
+        console.log('🔄 DEBUG: Current linktree avatar:', linktree_avatar);
         try {
           // Extract the actual file path from the URL
           // Supabase URLs look like: https://xxx.supabase.co/storage/v1/object/public/avatars/linktree_avatars/filename.jpg
@@ -742,25 +751,31 @@ export function LinktreeProvider({ children }: { children: ReactNode }) {
             const oldFileName = urlParts[fileNameIndex];
             const oldAvatarPath = `linktree_avatars/${oldFileName}`;
             
-            console.log('Attempting to delete old avatar:', oldAvatarPath);
+            console.log('🔄 DEBUG: Attempting to delete old avatar:', oldAvatarPath);
             const { error: deleteError } = await supabase.storage
               .from('avatars')
               .remove([oldAvatarPath]);
             
             if (deleteError) {
-              console.log('Error deleting old avatar:', deleteError);
+              console.log('❌ DEBUG: Error deleting old avatar:', deleteError);
             } else {
-              console.log('Old avatar removed from storage successfully');
+              console.log('✅ DEBUG: Old avatar removed from storage successfully');
             }
+          } else {
+            console.log('⚠️ DEBUG: Could not parse old avatar URL path');
           }
         } catch (deleteError) {
-          console.log('Error deleting old avatar (may not exist):', deleteError);
+          console.log('⚠️ DEBUG: Error deleting old avatar (may not exist):', deleteError);
         }
+      } else {
+        console.log('🔄 DEBUG: No existing linktree avatar to delete');
       }
       
       // Upload new avatar with auto-replace (same filename = auto-replace)
       const fileExt = newAvatarFile.name.split('.').pop();
       const fileName = `linktree_avatars/linktree_${address}.${fileExt}`;
+      
+      console.log('🔄 DEBUG: Uploading new avatar to:', fileName);
       
       const { error: uploadError } = await supabase.storage
         .from('avatars')
@@ -770,19 +785,28 @@ export function LinktreeProvider({ children }: { children: ReactNode }) {
         });
       
       if (uploadError) {
+        console.error('❌ DEBUG: Upload error:', uploadError);
         throw uploadError;
       }
+      
+      console.log('✅ DEBUG: File uploaded successfully');
       
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('avatars')
         .getPublicUrl(fileName);
       
+      console.log('🔄 DEBUG: Public URL generated:', publicUrl);
+      
       // Update state and database
+      console.log('🔄 DEBUG: Updating local state...');
       setLinktreeAvatar(publicUrl);
+      
+      console.log('🔄 DEBUG: Calling updateLinktreeProfile...');
       await updateLinktreeProfile(linktree_username, linktree_bio, publicUrl);
       
       // Immediately save to database to persist the avatar
+      console.log('🔄 DEBUG: Saving to database...');
       try {
         const { error } = await supabase
           .from('usernames')
@@ -793,29 +817,34 @@ export function LinktreeProvider({ children }: { children: ReactNode }) {
           .eq('address', address.toLowerCase().trim());
         
         if (error) {
-          console.error('Error saving avatar to database:', error);
+          console.error('❌ DEBUG: Error saving avatar to database:', error);
         } else {
-          console.log('Avatar saved to database successfully');
+          console.log('✅ DEBUG: Avatar saved to database successfully');
           
           // Force refresh profile data from database to ensure consistency
+          console.log('🔄 DEBUG: Refreshing profile data from database...');
           try {
             const mainProfile = await fetchMainAppProfile();
             if (mainProfile && mainProfile.linktree_avatar) {
-              console.log('Refreshing profile data from database:', mainProfile.linktree_avatar);
+              console.log('✅ DEBUG: Refreshing profile data from database:', mainProfile.linktree_avatar);
               setLinktreeAvatar(mainProfile.linktree_avatar);
+            } else {
+              console.log('⚠️ DEBUG: No profile data returned from fetchMainAppProfile');
             }
           } catch (refreshError) {
-            console.error('Error refreshing profile data:', refreshError);
+            console.error('❌ DEBUG: Error refreshing profile data:', refreshError);
           }
         }
       } catch (dbError) {
-        console.error('Error saving avatar to database:', dbError);
+        console.error('❌ DEBUG: Error saving avatar to database:', dbError);
       }
       
-      console.log('Avatar changed successfully:', publicUrl);
+      console.log('🎉 DEBUG: Avatar changed successfully:', publicUrl);
       return publicUrl;
     } catch (error) {
-      console.error('Error changing avatar:', error);
+      console.error('❌ DEBUG: Error changing avatar:', error);
+      console.error('❌ DEBUG: Error type:', typeof error);
+      console.error('❌ DEBUG: Error message:', error?.message);
       throw error;
     }
   };
