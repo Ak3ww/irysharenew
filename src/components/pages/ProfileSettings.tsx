@@ -393,8 +393,10 @@ export function ProfileSettings({ address, isConnected, usernameSaved, onBack }:
       const croppedFile = new File([blob], 'cropped-avatar.jpg', { type: 'image/jpeg' });
       
       // Upload the cropped image to replace the original
+      // Generate filename with timestamp to prevent browser caching
+      const timestamp = Date.now();
       const fileExt = 'jpg';
-      const fileName = `mainavatars/${address?.toLowerCase()}.${fileExt}`;
+      const fileName = `mainavatars/${address?.toLowerCase()}_${timestamp}.${fileExt}`;
       
       console.log('🔍 DEBUG: Uploading cropped avatar to:', fileName);
       
