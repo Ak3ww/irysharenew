@@ -284,14 +284,15 @@ export default function AdminApperance() {
     }
   }, [userStore.linktree_avatar]);
   
-  // Listen for Linktree avatar update events
+  // Listen for Linktree avatar update events (like ProfileSettings)
   useEffect(() => {
     const handleLinktreeAvatarUpdate = () => {
       console.log('🔄 DEBUG: Linktree avatar update event received');
-      // Force refresh from store
+      // Update immediately when event is received
       if (userStore.linktree_avatar) {
         setLocalAvatarUrl(userStore.linktree_avatar);
         setAvatarUpdateKey(prev => prev + 1);
+        console.log('✅ DEBUG: Avatar updated from event');
       }
     };
     
@@ -300,7 +301,7 @@ export default function AdminApperance() {
     return () => {
       window.removeEventListener('linktree-avatar-updated', handleLinktreeAvatarUpdate);
     };
-  }, [userStore.linktree_avatar]);
+  }, []);
 
   const handleAvatarChange = async (file: File) => {
     try {
@@ -339,32 +340,30 @@ export default function AdminApperance() {
         type: file.type
       });
       
-      await userStore.changeAvatar(file);
-      console.log('✅ DEBUG: changeAvatar completed successfully');
-      
-      // Log the avatar value immediately after change
-      console.log('🔄 DEBUG: Avatar value immediately after changeAvatar:', userStore.linktree_avatar);
-      
-      // Update local state immediately for instant UI update
-      setLocalAvatarUrl(userStore.linktree_avatar);
-      
-      // Small delay to ensure store has updated, then force re-render
-      setTimeout(() => {
-        console.log('🔄 DEBUG: After delay - Avatar value:', userStore.linktree_avatar);
+      // Call changeAvatar but don't wait for it to complete
+      userStore.changeAvatar(file).then((publicUrl) => {
+        console.log('✅ DEBUG: changeAvatar completed successfully with URL:', publicUrl);
+        
+        // Update local state immediately for instant UI update (like ProfileSettings)
+        setLocalAvatarUrl(publicUrl);
         setAvatarUpdateKey(prev => prev + 1);
-        console.log('🔄 DEBUG: Forced re-render after avatar change');
-      }, 200); // Increased delay to ensure store update
+        
+        // Dispatch event to notify other components (like ProfileSettings does)
+        window.dispatchEvent(new CustomEvent('linktree-avatar-updated'));
+        
+        console.log('🎉 DEBUG: Avatar updated immediately in UI');
+      }).catch((error) => {
+        console.error('❌ DEBUG: Error in changeAvatar:', error);
+        alert('Failed to save cropped avatar. Please try again.');
+      });
       
+      // Close cropper immediately (don't wait for upload)
       setIsCropperOpen(false);
       setCroppedAvatarUrl(null);
-      console.log('🎉 DEBUG: Final linktree_avatar value:', userStore.linktree_avatar);
+      
     } catch (error) {
-      console.error('❌ DEBUG: Error saving cropped avatar:', error);
-      console.error('❌ DEBUG: Error details:', {
-        message: error && typeof error === 'object' && 'message' in error ? (error as Error).message : 'No message available',
-        type: typeof error
-      });
-      alert('Failed to save cropped avatar. Please try again.');
+      console.error('❌ DEBUG: Error processing cropped avatar:', error);
+      alert('Failed to process cropped image. Please try again.');
     }
   };
 
