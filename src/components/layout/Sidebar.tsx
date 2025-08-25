@@ -227,12 +227,11 @@ export function Sidebar({ activePage, onPageChange, address, isCollapsed = false
           onClick={() => onPageChange('linktree')}
           isNew={true}
         />
-                <SidebarItem
+                                 <SidebarItem
           icon={<Settings size={20} />}
           label="PROFILE SETTINGS"
           isActive={activePage === 'profile'}
           onClick={() => onPageChange('profile')}
-          isNew={true}
         />
       </div>
       {/* Disconnect Button */}
