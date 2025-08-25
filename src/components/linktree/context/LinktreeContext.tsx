@@ -570,9 +570,9 @@ export function LinktreeProvider({ children }: { children: ReactNode }) {
               const blob = await response.blob();
               const file = new File([blob], 'synced-avatar.jpg', { type: blob.type });
               
-              // Upload to linktree_avatars folder
-              const fileExt = file.name.split('.').pop();
-              const fileName = `linktree_avatars/synced_${address}.${fileExt}`;
+                             // Upload to linktreeavatars folder (no underscore in storage)
+               const fileExt = file.name.split('.').pop();
+               const fileName = `linktreeavatars/synced_${address}.${fileExt}`;
               
               const { error: uploadError } = await supabase.storage
                 .from('avatars')
@@ -783,7 +783,7 @@ export function LinktreeProvider({ children }: { children: ReactNode }) {
       }
       
       // Upload new avatar with auto-replace (same filename = auto-replace)
-      // Use linktreeavatars folder for Linktree avatars (no underscore in storage path)
+      // Use linktreeavatars folder for Linktree avatars (no underscore in storage)
       const fileExt = newAvatarFile.name.split('.').pop() || 'jpg';
       let fileName = `linktreeavatars/${address.toLowerCase()}.${fileExt}`;
       
@@ -800,9 +800,9 @@ export function LinktreeProvider({ children }: { children: ReactNode }) {
       
       uploadError = error;
       
-      // If linktreeavatars folder doesn't exist, try mainavatars as fallback
+      // If linktree_avatars folder doesn't exist, try mainavatars as fallback
       if (uploadError && uploadError.message.includes('not found')) {
-        console.log('🔄 DEBUG: linktreeavatars folder not found, trying mainavatars as fallback...');
+        console.log('🔄 DEBUG: linktree_avatars folder not found, trying mainavatars as fallback...');
         fileName = `mainavatars/${address.toLowerCase()}.${fileExt}`;
         
         const { error: fallbackError } = await supabase.storage
