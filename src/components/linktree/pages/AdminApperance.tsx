@@ -340,29 +340,36 @@ export default function AdminApperance() {
         type: file.type
       });
       
-      // Call changeAvatar but don't wait for it to complete
-      userStore.changeAvatar(file).then((publicUrl) => {
-        console.log('✅ DEBUG: changeAvatar completed successfully with URL:', publicUrl);
-        
-        // Update local state immediately for instant UI update (like ProfileSettings)
-        setLocalAvatarUrl(publicUrl);
-        setAvatarUpdateKey(prev => prev + 1);
-        
-        // Dispatch event to notify other components (like ProfileSettings does)
-        window.dispatchEvent(new CustomEvent('linktree-avatar-updated'));
-        
-        console.log('🎉 DEBUG: Avatar updated immediately in UI');
-      }).catch((error) => {
-        console.error('❌ DEBUG: Error in changeAvatar:', error);
-        alert('Failed to save cropped avatar. Please try again.');
-      });
+      // Update local state IMMEDIATELY with cropped image for instant UI update
+      setLocalAvatarUrl(croppedImageUrl);
+      setAvatarUpdateKey(prev => prev + 1);
+      console.log('🎉 DEBUG: Avatar updated IMMEDIATELY in UI with cropped image');
       
       // Close cropper immediately (don't wait for upload)
       setIsCropperOpen(false);
       setCroppedAvatarUrl(null);
       
+      // Call changeAvatar in background (don't wait for it)
+      userStore.changeAvatar(file).then((publicUrl) => {
+        console.log('✅ DEBUG: changeAvatar completed successfully with URL:', publicUrl);
+        
+        // Update local state with final public URL
+        setLocalAvatarUrl(publicUrl);
+        setAvatarUpdateKey(prev => prev + 1);
+        
+        // Dispatch event to notify other components
+        window.dispatchEvent(new CustomEvent('linktree-avatar-updated'));
+        
+        console.log('🎉 DEBUG: Final avatar URL set:', publicUrl);
+      }).catch((error) => {
+        console.error('❌ DEBUG: Error in changeAvatar:', error);
+        // Revert to previous avatar on error
+        setLocalAvatarUrl(userStore.linktree_avatar);
+        alert('Failed to save cropped avatar. Please try again.');
+      });
+      
     } catch (error) {
-      console.error('❌ DEBUG: Error processing cropped avatar:', error);
+      console.error('❌ DEBUG: Error processing cropped image:', error);
       alert('Failed to process cropped image. Please try again.');
     }
   };
