@@ -259,41 +259,25 @@ export default function AdminApperance() {
   const userStore = useLinktreeStore();
   const [isCropperOpen, setIsCropperOpen] = useState(false);
   const [croppedAvatarUrl, setCroppedAvatarUrl] = useState<string | null>(null);
-  const [avatarUpdateKey, setAvatarUpdateKey] = useState(0);
-  const [localAvatarUrl, setLocalAvatarUrl] = useState<string | null>(null);
   
   // Load auto-saved data on component mount
   useEffect(() => {
     // No need for localStorage loading - just let the context load from Supabase
     console.log('AdminApperance loaded - Linktree data will be loaded from Supabase');
     
-    // Initialize local avatar URL with current store value
-    if (userStore.linktree_avatar) {
-      setLocalAvatarUrl(userStore.linktree_avatar);
-    }
+    // Avatar system ready
   }, []); // Run only once on mount
 
-  // Monitor avatar changes and force re-render
+  // Monitor avatar changes (like ProfileSettings)
   useEffect(() => {
     console.log('🔄 DEBUG: Avatar changed in store:', userStore.linktree_avatar);
-    setAvatarUpdateKey(prev => prev + 1); // Force re-render
-    
-    // Also update local avatar URL immediately
-    if (userStore.linktree_avatar) {
-      setLocalAvatarUrl(userStore.linktree_avatar);
-    }
   }, [userStore.linktree_avatar]);
   
   // Listen for Linktree avatar update events (like ProfileSettings)
   useEffect(() => {
     const handleLinktreeAvatarUpdate = () => {
       console.log('🔄 DEBUG: Linktree avatar update event received');
-      // Update immediately when event is received
-      if (userStore.linktree_avatar) {
-        setLocalAvatarUrl(userStore.linktree_avatar);
-        setAvatarUpdateKey(prev => prev + 1);
-        console.log('✅ DEBUG: Avatar updated from event');
-      }
+      console.log('✅ DEBUG: Avatar update event processed');
     };
     
     window.addEventListener('linktree-avatar-updated', handleLinktreeAvatarUpdate);
@@ -340,37 +324,17 @@ export default function AdminApperance() {
         type: file.type
       });
       
-      // Update local state IMMEDIATELY with cropped image for instant UI update
-      setLocalAvatarUrl(croppedImageUrl);
-      setAvatarUpdateKey(prev => prev + 1);
-      console.log('🎉 DEBUG: Avatar updated IMMEDIATELY in UI with cropped image');
-      
-      // Close cropper immediately (don't wait for upload)
+      // Close cropper immediately (like ProfileSettings)
       setIsCropperOpen(false);
       setCroppedAvatarUrl(null);
       
-      // Call changeAvatar in background (don't wait for it)
-      userStore.changeAvatar(file).then((publicUrl) => {
-        console.log('✅ DEBUG: changeAvatar completed successfully with URL:', publicUrl);
-        
-        // Update local state with final public URL
-        setLocalAvatarUrl(publicUrl);
-        setAvatarUpdateKey(prev => prev + 1);
-        
-        // Dispatch event to notify other components
-        window.dispatchEvent(new CustomEvent('linktree-avatar-updated'));
-        
-        console.log('🎉 DEBUG: Final avatar URL set:', publicUrl);
-      }).catch((error) => {
-        console.error('❌ DEBUG: Error in changeAvatar:', error);
-        // Revert to previous avatar on error
-        setLocalAvatarUrl(userStore.linktree_avatar);
-        alert('Failed to save cropped avatar. Please try again.');
-      });
+      // Call changeAvatar (like ProfileSettings does)
+      await userStore.changeAvatar(file);
+      console.log('✅ DEBUG: changeAvatar completed successfully');
       
     } catch (error) {
-      console.error('❌ DEBUG: Error processing cropped image:', error);
-      alert('Failed to process cropped image. Please try again.');
+      console.error('❌ DEBUG: Error in changeAvatar:', error);
+      alert('Failed to save cropped avatar. Please try again.');
     }
   };
 
@@ -406,15 +370,15 @@ export default function AdminApperance() {
                   PROFILE AVATAR
                 </label>
                 <div className="flex items-center space-x-4">
-                  <div className="w-20 h-20 bg-white/10 rounded-full flex items-center justify-center border-2 border-white/20">
-                                         {(localAvatarUrl || userStore.linktree_avatar) ? (
-                       <img 
-                         key={`avatar-${localAvatarUrl || userStore.linktree_avatar}-${avatarUpdateKey}`}
-                         src={localAvatarUrl || userStore.linktree_avatar}
-                         alt="Profile"
-                         className="w-full h-full rounded-full object-cover"
-                       />
-                     ) : (
+                                    <div className="w-20 h-20 bg-white/10 rounded-full flex items-center justify-center border-2 border-white/20">
+                    {userStore.linktree_avatar ? (
+                      <img 
+                        key={`linktree-avatar-${userStore.linktree_avatar}`}
+                        src={userStore.linktree_avatar}
+                        alt="Profile"
+                        className="w-full h-full rounded-full object-cover"
+                      />
+                    ) : (
                       <svg className="w-8 h-8 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                       </svg>
@@ -527,7 +491,7 @@ export default function AdminApperance() {
         </div>
 
                  {/* Mobile Phone Frame Preview - Desktop Only */}
-         <DevicePreview key={`preview-${userStore.linktree_avatar || 'default'}-${avatarUpdateKey}`} />
+                         <DevicePreview key={`preview-${userStore.linktree_avatar || 'default'}`} />
       </div>
 
       {isCropperOpen && croppedAvatarUrl && (
