@@ -128,6 +128,8 @@ function ImageCropper({
     document.addEventListener('keydown', handleEsc);
     return () => document.removeEventListener('keydown', handleEsc);
   }, [onCancel]);
+
+
   // Click outside handler
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
@@ -261,7 +263,7 @@ export function ProfileSettings({ address, isConnected, usernameSaved, onBack }:
   const [profileBio, setProfileBio] = useState('');
   const [profileAvatar, setProfileAvatar] = useState('');
   const [originalAvatarUrl, setOriginalAvatarUrl] = useState(''); // Store original avatar for cleanup
-  const [avatarUploading, setAvatarUploading] = useState(false);
+
   const [avatarUploaded, setAvatarUploaded] = useState(false);
   const [showCropper, setShowCropper] = useState(false);
   const [tempAvatarUrl, setTempAvatarUrl] = useState('');
@@ -361,18 +363,44 @@ export function ProfileSettings({ address, isConnected, usernameSaved, onBack }:
   }, [address, isConnected, usernameSaved]);
   const handleAvatarUpload = useCallback(async (file: File) => {
     if (!address) return;
-    setAvatarUploading(true);
     setError('');
+    
     try {
-      // Use mainavatars storage with auto-replace functionality
-      const fileExt = file.name.split('.').pop();
-      const fileName = `mainavatars/${address.toLowerCase()}.${fileExt}`;
+      // Convert file to data URL for cropper (don't upload yet)
+      const reader = new FileReader();
+      reader.onload = () => {
+        console.log('✅ DEBUG: File read successfully, opening cropper...');
+        setTempAvatarUrl(reader.result as string);
+        setAvatarUploaded(true);
+        setShowCropper(true);
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Avatar processing error:', error);
+      setError('Failed to process image. Please try again.');
+    }
+  }, [address]);
+  const handleCropComplete = async (croppedImageUrl: string) => {
+    console.log('DEBUG: Crop complete, processing cropped image');
+    
+    try {
+      // Store the original avatar URL before changing it (for cleanup purposes)
+      const originalAvatarUrl = profileAvatar;
       
-      console.log('🔍 DEBUG: Uploading avatar to:', fileName);
+      // Convert base64 cropped image to File
+      const response = await fetch(croppedImageUrl);
+      const blob = await response.blob();
+      const croppedFile = new File([blob], 'cropped-avatar.jpg', { type: 'image/jpeg' });
+      
+      // Upload the cropped image to replace the original
+      const fileExt = 'jpg';
+      const fileName = `mainavatars/${address?.toLowerCase()}.${fileExt}`;
+      
+      console.log('🔍 DEBUG: Uploading cropped avatar to:', fileName);
       
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(fileName, file, {
+        .upload(fileName, croppedFile, {
           cacheControl: '3600',
           upsert: true // This will automatically replace existing files
         });
@@ -381,37 +409,28 @@ export function ProfileSettings({ address, isConnected, usernameSaved, onBack }:
         throw uploadError;
       }
       
-      // Get public URL
+      // Get public URL of the cropped image
       const { data: { publicUrl } } = supabase.storage
         .from('avatars')
         .getPublicUrl(fileName);
       
-      console.log('✅ DEBUG: Avatar uploaded successfully to:', fileName);
+      console.log('✅ DEBUG: Cropped avatar uploaded successfully to:', fileName);
       
-      setTempAvatarUrl(publicUrl);
-      setAvatarUploaded(true);
-      // Automatically show cropper after upload
-      setShowCropper(true);
+      // Update the profile avatar with the cropped version
+      setProfileAvatar(publicUrl);
+      
+      // Store the original URL for cleanup
+      setOriginalAvatarUrl(originalAvatarUrl);
+      
+      // Dispatch custom event to notify ProfileWidget to refresh
+      window.dispatchEvent(new CustomEvent('avatar-updated'));
+      
+      setShowCropper(false);
+      setSuccess('Profile picture cropped and uploaded successfully! Click "Save Profile Settings" to apply changes.');
     } catch (error) {
-      console.error('Avatar upload error:', error);
-      setError('Avatar upload failed. Please try again.');
-    } finally {
-      setAvatarUploading(false);
+      console.error('Error processing cropped avatar:', error);
+      setError('Failed to process cropped image. Please try again.');
     }
-  }, [address]);
-  const handleCropComplete = () => {
-    console.log('DEBUG: Crop complete, using Supabase storage URL instead of base64');
-    // Store the original avatar URL before changing it (for cleanup purposes)
-    const originalAvatarUrl = profileAvatar;
-    
-    // Use the original Supabase storage URL instead of base64 cropped version
-    setProfileAvatar(tempAvatarUrl); // Use the Supabase URL, not the cropped base64
-    
-    // Store the original URL in a ref or state for cleanup
-    setOriginalAvatarUrl(originalAvatarUrl);
-    
-    setShowCropper(false);
-    setSuccess('Profile picture uploaded successfully! Click "Save Profile Settings" to apply changes.');
   };
   const handleSaveProfile = async () => {
     if (!address) return;
@@ -518,6 +537,9 @@ export function ProfileSettings({ address, isConnected, usernameSaved, onBack }:
       }
       
       console.log('✅ DEBUG: Profile updated successfully in usernames table');
+      
+      // Dispatch custom event to notify ProfileWidget to refresh after database update
+      window.dispatchEvent(new CustomEvent('avatar-updated'));
       
       console.log('🔍 DEBUG: Updating profile_visible for all user files...');
       
@@ -708,6 +730,7 @@ export function ProfileSettings({ address, isConnected, usernameSaved, onBack }:
                         <div className="w-20 h-20 bg-white/10 rounded-full flex items-center justify-center border-2 border-white/20">
                           {profileAvatar ? (
                             <img 
+                              key={`profile-avatar-${profileAvatar}`}
                               src={profileAvatar} 
                               alt="Profile"
                               className="w-full h-full rounded-full object-cover"
@@ -744,17 +767,7 @@ export function ProfileSettings({ address, isConnected, usernameSaved, onBack }:
                         </label>
                       </div>
                     </div>
-                                         {/* Upload Status */}
-                     {avatarUploading && (
-                       <div className="mb-4">
-                         <div className="flex items-center gap-2 mb-2">
-                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#67FFD4]"></div>
-                           <span className="text-[#67FFD4] text-sm" style={{ fontFamily: 'Irys2' }}>
-                             Uploading to Irys...
-                           </span>
-                         </div>
-                       </div>
-                     )}
+                    
                      {avatarUploaded && tempAvatarUrl && (
                        <div className="mb-4">
                          <div className="flex items-center gap-2 mb-2">

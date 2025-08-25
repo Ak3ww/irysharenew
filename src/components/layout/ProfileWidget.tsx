@@ -45,41 +45,57 @@ export function ProfileWidget({ address, isConnected, usernameSaved }: ProfileWi
     address: wagmiAddress as `0x${string}`,
   });
   // Fetch user stats
-  useEffect(() => {
+  const fetchStats = async () => {
     if (!address || !isConnected || !usernameSaved) return;
-    const fetchStats = async () => {
-      try {
-        const normalizedAddress = address.toLowerCase().trim();
-        // Fetch user profile and storage info
-        const [profileResult, filesResult] = await Promise.all([
-          supabase
-            .from('usernames')
-            .select('username, profile_avatar')
-            .eq('address', normalizedAddress)
-            .single(),
-          supabase
-            .from('files')
-            .select('id', { count: 'exact' })
-            .eq('owner_address', normalizedAddress)
-        ]);
-        const username = profileResult.data?.username || 'Unknown';
-        const profileAvatar = profileResult.data?.profile_avatar || '';
-        const usedBytes = 0; // Storage tracking temporarily disabled
-        const totalFiles = filesResult.count || 0;
-        const totalStorage = 12 * 1024 * 1024 * 1024; // 12GB
-        setStats({
-          username,
-          profileAvatar,
-          totalFiles,
-          usedStorage: usedBytes,
-          totalStorage
-        });
-      } catch (error) {
-        console.error('Error fetching user stats:', error);
-      }
-    };
+    try {
+      const normalizedAddress = address.toLowerCase().trim();
+      // Fetch user profile and storage info
+      const [profileResult, filesResult] = await Promise.all([
+        supabase
+          .from('usernames')
+          .select('username, profile_avatar')
+          .eq('address', normalizedAddress)
+          .single(),
+        supabase
+          .from('files')
+          .select('id', { count: 'exact' })
+          .eq('owner_address', normalizedAddress)
+      ]);
+      const username = profileResult.data?.username || 'Unknown';
+      const profileAvatar = profileResult.data?.profile_avatar || '';
+      const usedBytes = 0; // Storage tracking temporarily disabled
+      const totalFiles = filesResult.count || 0;
+      const totalStorage = 12 * 1024 * 1024 * 1024; // 12GB
+      setStats({
+        username,
+        profileAvatar,
+        totalFiles,
+        usedStorage: usedBytes,
+        totalStorage
+      });
+    } catch (error) {
+      console.error('Error fetching user stats:', error);
+    }
+  };
+
+  // Initial fetch
+  useEffect(() => {
     fetchStats();
   }, [address, isConnected, usernameSaved]);
+
+  // Listen for storage changes to refresh avatar
+  useEffect(() => {
+    const handleStorageChange = () => {
+      fetchStats();
+    };
+
+    // Listen for custom event when main app avatar is updated (mainavatars)
+    window.addEventListener('avatar-updated', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('avatar-updated', handleStorageChange);
+    };
+  }, []);
   // Don't render if not connected or no username
   if (!isConnected || !usernameSaved) {
     return null;
@@ -109,8 +125,9 @@ export function ProfileWidget({ address, isConnected, usernameSaved }: ProfileWi
         onClick={() => setIsExpanded(!isExpanded)}
         className="relative w-12 h-12 bg-white/5 backdrop-blur-xl border border-white/10 rounded-full overflow-hidden hover:bg-white/10 transition-all duration-200 group"
       >
-        {stats?.profileAvatar ? (
+                {stats?.profileAvatar ? (
           <img 
+            key={stats.profileAvatar}
             src={stats.profileAvatar} 
             alt={stats.username} 
             className="w-full h-full object-cover"

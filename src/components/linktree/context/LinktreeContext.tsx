@@ -744,13 +744,24 @@ export function LinktreeProvider({ children }: { children: ReactNode }) {
         console.log('🔄 DEBUG: Current linktree avatar:', linktree_avatar);
         try {
           // Extract the actual file path from the URL
-          // Supabase URLs look like: https://xxx.supabase.co/storage/v1/object/public/avatars/linktree_avatars/filename.jpg
+          // Supabase URLs look like: https://xxx.supabase.co/storage/v1/object/public/avatars/linktreeavatars/filename.jpg
+          // or https://xxx.supabase.co/storage/v1/object/public/avatars/mainavatars/filename.jpg (fallback)
           const urlParts = linktree_avatar.split('/');
-          const fileNameIndex = urlParts.indexOf('linktree_avatars') + 1;
-          if (fileNameIndex > 0 && fileNameIndex < urlParts.length) {
-            const oldFileName = urlParts[fileNameIndex];
-            const oldAvatarPath = `linktree_avatars/${oldFileName}`;
-            
+          let oldAvatarPath = '';
+          
+          // Check for linktreeavatars first, then mainavatars as fallback
+          const linktreeIndex = urlParts.indexOf('linktreeavatars');
+          const mainavatarsIndex = urlParts.indexOf('mainavatars');
+          
+          if (linktreeIndex > 0) {
+            const oldFileName = urlParts[linktreeIndex + 1];
+            oldAvatarPath = `linktreeavatars/${oldFileName}`;
+          } else if (mainavatarsIndex > 0) {
+            const oldFileName = urlParts[mainavatarsIndex + 1];
+            oldAvatarPath = `mainavatars/${oldFileName}`;
+          }
+          
+          if (oldAvatarPath) {
             console.log('🔄 DEBUG: Attempting to delete old avatar:', oldAvatarPath);
             const { error: deleteError } = await supabase.storage
               .from('avatars')
@@ -772,24 +783,47 @@ export function LinktreeProvider({ children }: { children: ReactNode }) {
       }
       
       // Upload new avatar with auto-replace (same filename = auto-replace)
-      const fileExt = newAvatarFile.name.split('.').pop();
-      const fileName = `linktree_avatars/linktree_${address}.${fileExt}`;
+      // Use linktreeavatars folder for Linktree avatars (no underscore in storage path)
+      const fileExt = newAvatarFile.name.split('.').pop() || 'jpg';
+      let fileName = `linktreeavatars/${address.toLowerCase()}.${fileExt}`;
       
       console.log('🔄 DEBUG: Uploading new avatar to:', fileName);
       
-      const { error: uploadError } = await supabase.storage
+      // Try to upload to linktreeavatars folder first
+      let uploadError = null;
+      const { error } = await supabase.storage
         .from('avatars')
         .upload(fileName, newAvatarFile, {
           cacheControl: '3600',
-          upsert: true
+          upsert: true // This will automatically replace existing files
         });
       
-      if (uploadError) {
+      uploadError = error;
+      
+      // If linktreeavatars folder doesn't exist, try mainavatars as fallback
+      if (uploadError && uploadError.message.includes('not found')) {
+        console.log('🔄 DEBUG: linktreeavatars folder not found, trying mainavatars as fallback...');
+        fileName = `mainavatars/${address.toLowerCase()}.${fileExt}`;
+        
+        const { error: fallbackError } = await supabase.storage
+          .from('avatars')
+          .upload(fileName, newAvatarFile, {
+            cacheControl: '3600',
+            upsert: true
+          });
+        
+        if (fallbackError) {
+          console.error('❌ DEBUG: Fallback upload also failed:', fallbackError);
+          throw fallbackError;
+        }
+        
+        console.log('✅ DEBUG: File uploaded successfully to fallback path:', fileName);
+      } else if (uploadError) {
         console.error('❌ DEBUG: Upload error:', uploadError);
         throw uploadError;
+      } else {
+        console.log('✅ DEBUG: File uploaded successfully to:', fileName);
       }
-      
-      console.log('✅ DEBUG: File uploaded successfully');
       
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
@@ -842,14 +876,17 @@ export function LinktreeProvider({ children }: { children: ReactNode }) {
         console.error('❌ DEBUG: Error saving avatar to database:', dbError);
       }
       
-      console.log('🎉 DEBUG: Avatar changed successfully:', publicUrl);
-      
-      // Force a final state update to ensure UI re-renders
-      setTimeout(() => {
-        setLinktreeAvatar(publicUrl);
-        setImage(publicUrl);
-        console.log('🔄 DEBUG: Final state update triggered for UI refresh');
-      }, 100);
+             console.log('🎉 DEBUG: Avatar changed successfully:', publicUrl);
+       
+       // Dispatch custom event to notify other components about Linktree avatar update
+       window.dispatchEvent(new CustomEvent('linktree-avatar-updated'));
+       
+       // Force a final state update to ensure UI re-renders
+       setTimeout(() => {
+         setLinktreeAvatar(publicUrl);
+         setImage(publicUrl);
+         console.log('🔄 DEBUG: Final state update triggered for UI refresh');
+       }, 100);
       
       return publicUrl;
     } catch (error) {
