@@ -42,20 +42,13 @@ export async function uploadFile(
     console.log(`✅ Storage check result:`, hasStorage);
     
     if (!hasStorage) {
-      // For now, allow uploads even if storage check fails (temporary fix)
-      console.warn('⚠️ Storage check failed, but allowing upload to continue...');
-      // throw new Error('Insufficient storage space. You have used your 12GB free storage allowance.');
+      throw new Error('Insufficient storage space. You have used your 12GB free storage allowance.');
     }
   } catch (storageError) {
     console.error('❌ Storage check error:', storageError);
     
-    // If it's a storage limit error, re-throw it
-    if (storageError instanceof Error && storageError.message.includes('Insufficient storage space')) {
-      throw storageError;
-    }
-    
-    // For other storage errors, try to continue with upload (graceful degradation)
-    console.warn('⚠️ Storage check failed, continuing with upload...');
+    // Re-throw storage errors to prevent uploads when storage is insufficient
+    throw storageError;
   }
   
   // Use original file type for public files, fallback to octet-stream if needed
@@ -100,7 +93,7 @@ export async function uploadFile(
     };
     const receipt = await irysUploader.upload(dataToUpload, transactionOptions);
     
-    // Update user storage after successful upload
+    // Only update storage after successful upload
     try {
       await updateUserStorage(userAddress, file.size);
       console.log(`✅ Storage updated for user: ${userAddress}, file size: ${file.size} bytes`);
