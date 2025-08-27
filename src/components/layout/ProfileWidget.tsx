@@ -84,6 +84,9 @@ export function ProfileWidget({ address, isConnected, usernameSaved }: ProfileWi
       if (storageResult) {
         usedBytes = storageResult.used_bytes || 0;
         totalBytes = storageResult.total_bytes || totalBytes;
+        console.log(`📊 Storage data received: ${usedBytes} bytes used, ${totalBytes} bytes total`);
+      } else {
+        console.log(`⚠️ No storage result for ${normalizedAddress}, using defaults`);
       }
       
       setStats({

@@ -107,16 +107,23 @@ export async function updateUserStorage(
  */
 export async function getUserStorage(userAddress: string): Promise<UserStorage | null> {
   try {
+    console.log(`🔍 getUserStorage called for: ${userAddress}`);
+    
     const { data, error } = await supabase
       .from('user_storage')
-      .select('*')
+      .select('id, address, used_bytes, total_bytes, last_updated, created_at')
       .eq('address', userAddress)
       .single();
 
-    if (error) return null;
+    if (error) {
+      console.error(`❌ Error fetching storage for ${userAddress}:`, error);
+      return null;
+    }
+    
+    console.log(`✅ Storage fetched successfully for ${userAddress}:`, data);
     return data;
   } catch (error) {
-    console.error('Error getting user storage:', error);
+    console.error(`❌ Exception in getUserStorage for ${userAddress}:`, error);
     return null;
   }
 }
