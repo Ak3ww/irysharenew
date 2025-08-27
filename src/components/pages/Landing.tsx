@@ -4,6 +4,7 @@ import { useAccount } from 'wagmi';
 import { supabase } from '../../utils/supabase';
 import { ArrowRight, Shield, Zap, Globe } from 'lucide-react';
 import { trackUserRegistration, trackUserLogin, trackPageView } from '../../utils/analytics';
+import { ensureUserStorage } from '../../utils/storageManagement';
 interface LandingProps {
   onLoginSuccess: () => void;
 }

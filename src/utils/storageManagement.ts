@@ -184,3 +184,51 @@ export function formatBytes(bytes: number): string {
   
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
+
+/**
+ * Ensure user has a storage record (create if doesn't exist)
+ * This should be called whenever a new user registers
+ */
+export async function ensureUserStorage(userAddress: string): Promise<boolean> {
+  try {
+    // Check if storage record exists
+    const { error } = await supabase
+      .from('user_storage')
+      .select('id')
+      .eq('address', userAddress)
+      .single();
+
+    if (error && error.code === 'PGRST116') {
+      // No storage record exists, create one
+      const { error: insertError } = await supabase
+        .from('user_storage')
+        .insert({
+          address: userAddress,
+          used_bytes: 0,
+          total_bytes: 12884901888, // 12GB from your schema
+          last_updated: new Date().toISOString(),
+          created_at: new Date().toISOString()
+        });
+
+      if (insertError) {
+        console.error('Error creating storage record:', insertError);
+        return false;
+      }
+
+      console.log(`✅ Storage record created for new user: ${userAddress}`);
+      return true;
+    }
+
+    if (error) {
+      console.error('Error checking storage record:', error);
+      return false;
+    }
+
+    // Storage record already exists
+    console.log(`✅ Storage record already exists for user: ${userAddress}`);
+    return true;
+  } catch (error) {
+    console.error('Error ensuring user storage:', error);
+    return false;
+  }
+}
