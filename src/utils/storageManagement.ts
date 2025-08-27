@@ -17,11 +17,14 @@ export async function hasEnoughStorage(
   fileSizeBytes: number
 ): Promise<boolean> {
   try {
+    // Normalize address to lowercase for consistency
+    const normalizedAddress = userAddress.toLowerCase();
+    
     // Get existing storage record
     const { data, error } = await supabase
       .from('user_storage')
       .select('used_bytes, total_bytes')
-      .eq('address', userAddress)
+      .eq('address', normalizedAddress)
       .single();
 
     // If record exists, check storage
@@ -34,7 +37,7 @@ export async function hasEnoughStorage(
     const { error: insertError } = await supabase
       .from('user_storage')
       .insert({
-        address: userAddress,
+        address: normalizedAddress,
         used_bytes: 0,
         total_bytes: 12884901888, // 12GB from your schema
         last_updated: new Date().toISOString()
@@ -62,10 +65,11 @@ export async function updateUserStorage(
 ): Promise<boolean> {
   try {
     // First get current storage to calculate new total
+    // Use case-insensitive comparison to avoid duplicates
     const { data: currentStorage, error: fetchError } = await supabase
       .from('user_storage')
       .select('used_bytes')
-      .eq('address', userAddress)
+      .ilike('address', userAddress)
       .single();
 
     let newUsedBytes = fileSizeBytes; // Default for new users
@@ -77,10 +81,12 @@ export async function updateUserStorage(
 
     // Use upsert to either update existing record or create new one
     // This prevents duplicate entries per user
+    // Normalize address to lowercase to ensure consistency
+    const normalizedAddress = userAddress.toLowerCase();
     const { error } = await supabase
       .from('user_storage')
       .upsert({
-        address: userAddress,
+        address: normalizedAddress,
         used_bytes: newUsedBytes,
         total_bytes: 12884901888, // 12GB from your schema
         last_updated: new Date().toISOString()
@@ -107,12 +113,14 @@ export async function updateUserStorage(
  */
 export async function getUserStorage(userAddress: string): Promise<UserStorage | null> {
   try {
-    console.log(`🔍 getUserStorage called for: ${userAddress}`);
+    // Normalize address to lowercase for consistency
+    const normalizedAddress = userAddress.toLowerCase();
+    console.log(`🔍 getUserStorage called for: ${normalizedAddress}`);
     
     const { data, error } = await supabase
       .from('user_storage')
       .select('id, address, used_bytes, total_bytes, last_updated, created_at')
-      .eq('address', userAddress)
+      .eq('address', normalizedAddress)
       .single();
 
     if (error) {
@@ -133,6 +141,9 @@ export async function getUserStorage(userAddress: string): Promise<UserStorage |
  */
 export async function resetUserStorage(userAddress: string): Promise<boolean> {
   try {
+    // Normalize address to lowercase for consistency
+    const normalizedAddress = userAddress.toLowerCase();
+    
     // First, set used_bytes to 0
     const { error: resetError } = await supabase
       .from('user_storage')
@@ -140,7 +151,7 @@ export async function resetUserStorage(userAddress: string): Promise<boolean> {
         used_bytes: 0,
         last_updated: new Date().toISOString()
       })
-      .eq('address', userAddress);
+      .eq('address', normalizedAddress);
 
     if (resetError) {
       console.error('Error resetting storage:', resetError);
@@ -160,11 +171,14 @@ export async function resetUserStorage(userAddress: string): Promise<boolean> {
  */
 export async function getActualFileSizes(userAddress: string): Promise<number> {
   try {
+    // Normalize address to lowercase for consistency
+    const normalizedAddress = userAddress.toLowerCase();
+    
     // Query files table to get actual file sizes
     const { data, error } = await supabase
       .from('files')
       .select('file_size_bytes')
-      .eq('owner_address', userAddress);
+      .eq('owner_address', normalizedAddress);
 
     if (error) {
       console.error('Error getting file sizes:', error);
@@ -198,13 +212,15 @@ export function formatBytes(bytes: number): string {
  */
 export async function ensureUserStorage(userAddress: string): Promise<boolean> {
   try {
-    console.log(`🔍 ensureUserStorage called for: ${userAddress}`);
+    // Normalize address to lowercase for consistency
+    const normalizedAddress = userAddress.toLowerCase();
+    console.log(`🔍 ensureUserStorage called for: ${normalizedAddress}`);
     
     // Check if storage record exists
     const { error } = await supabase
       .from('user_storage')
       .select('id')
-      .eq('address', userAddress)
+      .eq('address', normalizedAddress)
       .single();
 
     if (error && error.code === 'PGRST116') {
@@ -214,7 +230,7 @@ export async function ensureUserStorage(userAddress: string): Promise<boolean> {
       const { error: insertError } = await supabase
         .from('user_storage')
         .insert({
-          address: userAddress,
+          address: normalizedAddress,
           used_bytes: 0,
           total_bytes: 12884901888, // 12GB from your schema
           last_updated: new Date().toISOString(),
