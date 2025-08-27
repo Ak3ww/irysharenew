@@ -243,8 +243,12 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
         setUploadProgress(100);
         setUploadStage('Upload complete!');
       }
-      // Storage tracking temporarily disabled to fix 406 errors
-      // TODO: Re-enable when user_storage table is properly configured
+      
+      // Dispatch event to refresh storage display
+      window.dispatchEvent(new CustomEvent('file-uploaded', {
+        detail: { fileSize: file.size, userAddress: address }
+      }));
+      
       // Reset form
       setFile(null);
       setShareRecipients('');

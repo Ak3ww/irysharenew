@@ -3,11 +3,14 @@ import { X } from 'lucide-react';
 import { supabase } from '../../utils/supabase';
 import { useBalance, useAccount, useDisconnect } from 'wagmi';
 import { useToast } from '../../hooks/use-toast';
+import { getUserStorage, formatBytes } from '../../utils/storageManagement';
+
 interface ProfileWidgetProps {
   address: string;
   isConnected: boolean;
   usernameSaved: boolean;
 }
+
 interface UserStats {
   totalFiles: number;
   usedStorage: number;
@@ -15,10 +18,12 @@ interface UserStats {
   username: string;
   profileAvatar: string;
 }
+
 export function ProfileWidget({ address, isConnected, usernameSaved }: ProfileWidgetProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [stats, setStats] = useState<UserStats | null>(null);
   const { toast } = useToast();
+  
   // Copy to clipboard function
   const copyToClipboard = async (text: string) => {
     try {
@@ -37,20 +42,25 @@ export function ProfileWidget({ address, isConnected, usernameSaved }: ProfileWi
       });
     }
   };
+  
   // Wagmi hooks for Irys network
   const { address: wagmiAddress } = useAccount();
   const { disconnect } = useDisconnect();
+  
   // Get Irys balance
   const { data: irysBalance, isLoading: balanceLoading } = useBalance({
     address: wagmiAddress as `0x${string}`,
   });
+  
   // Fetch user stats
   const fetchStats = async () => {
     if (!address || !isConnected || !usernameSaved) return;
+    
     try {
       const normalizedAddress = address.toLowerCase().trim();
-      // Fetch user profile and storage info
-      const [profileResult, filesResult] = await Promise.all([
+      
+      // Fetch user profile, files, and storage info
+      const [profileResult, filesResult, storageResult] = await Promise.all([
         supabase
           .from('usernames')
           .select('username, profile_avatar')
@@ -59,22 +69,40 @@ export function ProfileWidget({ address, isConnected, usernameSaved }: ProfileWi
         supabase
           .from('files')
           .select('id', { count: 'exact' })
-          .eq('owner_address', normalizedAddress)
+          .eq('owner_address', normalizedAddress),
+        getUserStorage(normalizedAddress)
       ]);
+      
       const username = profileResult.data?.username || 'Unknown';
       const profileAvatar = profileResult.data?.profile_avatar || '';
-      const usedBytes = 0; // Storage tracking temporarily disabled
       const totalFiles = filesResult.count || 0;
-      const totalStorage = 12 * 1024 * 1024 * 1024; // 12GB
+      
+      // Get storage info from storageManagement utility
+      let usedBytes = 0;
+      let totalBytes = 12 * 1024 * 1024 * 1024; // Default 12GB
+      
+      if (storageResult) {
+        usedBytes = storageResult.used_bytes || 0;
+        totalBytes = storageResult.total_bytes || totalBytes;
+      }
+      
       setStats({
         username,
         profileAvatar,
         totalFiles,
         usedStorage: usedBytes,
-        totalStorage
+        totalStorage: totalBytes
       });
     } catch (error) {
       console.error('Error fetching user stats:', error);
+      // Set default values on error
+      setStats({
+        username: 'Unknown',
+        profileAvatar: '',
+        totalFiles: 0,
+        usedStorage: 0,
+        totalStorage: 12 * 1024 * 1024 * 1024
+      });
     }
   };
 
@@ -83,7 +111,7 @@ export function ProfileWidget({ address, isConnected, usernameSaved }: ProfileWi
     fetchStats();
   }, [address, isConnected, usernameSaved]);
 
-  // Listen for storage changes to refresh avatar
+  // Listen for storage changes to refresh stats
   useEffect(() => {
     const handleStorageChange = () => {
       fetchStats();
@@ -92,8 +120,12 @@ export function ProfileWidget({ address, isConnected, usernameSaved }: ProfileWi
     // Listen for custom event when main app avatar is updated (mainavatars)
     window.addEventListener('avatar-updated', handleStorageChange);
     
+    // Listen for file uploads to refresh storage
+    window.addEventListener('file-uploaded', handleStorageChange);
+    
     return () => {
       window.removeEventListener('avatar-updated', handleStorageChange);
+      window.removeEventListener('file-uploaded', handleStorageChange);
     };
   }, []);
   // Don't render if not connected or no username
@@ -101,13 +133,6 @@ export function ProfileWidget({ address, isConnected, usernameSaved }: ProfileWi
     return null;
   }
   const storagePercentage = stats ? (stats.usedStorage / stats.totalStorage) * 100 : 0;
-  const formatBytes = (bytes: number) => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
   // Format Irys balance
   const formatIrysBalance = (balance: bigint | undefined) => {
     if (!balance) return '0 IRYS';

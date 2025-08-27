@@ -3,6 +3,7 @@ import { WebEthereum } from "@irys/web-upload-ethereum";
 import { EthersV6Adapter } from "@irys/web-upload-ethereum-ethers-v6";
 import { ethers } from "ethers";
 import { Buffer } from "buffer";
+import { updateUserStorage, hasEnoughStorage } from './storageManagement';
 
 // This helper type correctly gets the type of the WebUploader instance.
 type IrysUploader = Awaited<ReturnType<typeof getIrysUploader>>;
@@ -34,12 +35,24 @@ export async function uploadFile(
     throw new Error(`File too large (${fileSizeMB.toFixed(2)}MB). Maximum supported size is 25MB.`);
   }
   
+  // Check if user has enough storage
+  try {
+    const hasStorage = await hasEnoughStorage(userAddress, file.size);
+    if (!hasStorage) {
+      throw new Error('Insufficient storage space. You have used your 12GB free storage allowance.');
+    }
+  } catch (storageError) {
+    console.error('Storage check error:', storageError);
+    throw new Error('Failed to check storage space. Please try again.');
+  }
+  
   // Use original file type for public files, fallback to octet-stream if needed
   const contentType = file.type || "application/octet-stream";
   const safeTags = [
     { name: "Content-Type", value: contentType },
     { name: "App-Name", value: "IryShare" },
     { name: "File-Name", value: file.name },
+    ...tags // Include any additional tags passed in
   ];
   
   // Ensure user is approved for sponsored uploads
@@ -74,6 +87,16 @@ export async function uploadFile(
       // No paidBy - will use approval system
     };
     const receipt = await irysUploader.upload(dataToUpload, transactionOptions);
+    
+    // Update user storage after successful upload
+    try {
+      await updateUserStorage(userAddress, file.size);
+      console.log(`✅ Storage updated for user: ${userAddress}, file size: ${file.size} bytes`);
+    } catch (storageUpdateError) {
+      console.error('Failed to update storage:', storageUpdateError);
+      // Don't fail the upload if storage update fails
+    }
+    
     return `https://gateway.irys.xyz/${receipt.id}`;
   } catch (uploadError) {
     const errorMessage = uploadError instanceof Error ? uploadError.message : 'Unknown error';
