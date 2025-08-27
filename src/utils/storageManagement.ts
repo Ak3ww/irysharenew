@@ -13,10 +13,12 @@ export interface UserStorage {
  * Check if user has enough storage for a file upload
  */
 export async function hasEnoughStorage(
-  userAddress: string, 
+  userAddress: string,
   fileSizeBytes: number
 ): Promise<boolean> {
   try {
+    console.log(`🔍 Checking storage for user: ${userAddress}, file size: ${fileSizeBytes} bytes`);
+    
     const { data, error } = await supabase
       .from('user_storage')
       .select('used_bytes, total_bytes')
@@ -25,18 +27,56 @@ export async function hasEnoughStorage(
 
     if (error) {
       console.error('Error checking storage:', error);
+      
+      // If it's a "not found" error, create storage record
+      if (error.code === 'PGRST116') {
+        console.log('No storage record found for user, creating one...');
+        const created = await createUserStorage(userAddress, 0);
+        if (created) {
+          console.log('✅ Storage record created successfully');
+          return true; // New users get full 12GB
+        } else {
+          console.error('❌ Failed to create storage record');
+          return false;
+        }
+      }
+      
       return false;
     }
 
     if (!data) {
       console.log('No storage record found for user, creating one...');
-      return await createUserStorage(userAddress, fileSizeBytes);
+      const created = await createUserStorage(userAddress, 0);
+      if (created) {
+        console.log('✅ Storage record created successfully');
+        return true; // New users get full 12GB
+      } else {
+        console.error('❌ Failed to create storage record');
+        return false;
+      }
     }
 
     const remainingBytes = data.total_bytes - data.used_bytes;
-    return remainingBytes >= fileSizeBytes;
+    const hasEnough = remainingBytes >= fileSizeBytes;
+    
+    console.log(`📊 Storage check: ${data.used_bytes} used, ${data.total_bytes} total, ${remainingBytes} remaining, need ${fileSizeBytes}, has enough: ${hasEnough}`);
+    
+    return hasEnough;
   } catch (error) {
     console.error('Error in hasEnoughStorage:', error);
+    
+    // For any unexpected errors, try to create storage record as fallback
+    try {
+      console.log('🔄 Attempting to create storage record as fallback...');
+      const created = await createUserStorage(userAddress, 0);
+      if (created) {
+        console.log('✅ Storage record created as fallback');
+        return true;
+      }
+    } catch (fallbackError) {
+      console.error('❌ Fallback storage creation also failed:', fallbackError);
+    }
+    
     return false;
   }
 }
