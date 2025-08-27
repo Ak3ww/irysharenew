@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iryshare API Platform Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .step {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8fafc;
+            border-radius: 12px;
+            border-left: 4px solid #2563eb;
+        }
+
+        .step h4 {
+            color: #1e293b;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+
+        .step p {
+            color: #64748b;
+            line-height: 1.6;
+            margin-bottom: 8px;
+        }
+
+        .card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .card h3 {
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+
+        .btn:hover {
+            background: #1d4ed8;
+            transform: translateY(-1px);
+        }
+
+        .btn:disabled {
+            background: #94a3b8;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: #64748b;
+        }
+
+        .btn-secondary:hover {
+            background: #475569;
+        }
+
+        .status {
+            margin: 15px 0;
+            font-weight: 500;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .status.success {
+            color: #059669;
+            background: #d1fae5;
+            padding: 12px;
+            border-radius: 8px;
+            border-left: 4px solid #10b981;
+        }
+
+        .status.error {
+            color: #dc2626;
+            background: #fee2e2;
+            padding: 12px;
+            border-radius: 8px;
+            border-left: 4px solid #ef4444;
+        }
+
+        .status.info {
+            color: #2563eb;
+            background: #dbeafe;
+            padding: 12px;
+            border-radius: 8px;
+            border-left: 4px solid #3b82f6;
+        }
+
+        .result-box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 15px;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .wallet-info {
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 20px 0;
+        }
+
+        .wallet-info h4 {
+            color: #0369a1;
+            margin-bottom: 10px;
+        }
+
+        .wallet-info p {
+            margin: 5px 0;
+            color: #0c4a6e;
+        }
+
+        .token-guide {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .token-display {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 16px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 11px;
+            word-break: break-all;
+            margin: 15px 0;
+            position: relative;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: #475569;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            cursor: pointer;
+        }
+
+        .copy-btn:hover {
+            background: #334155;
+        }
+
+        .code-examples {
+            margin: 20px 0;
+        }
+
+        .code-examples h4 {
+            color: #1e293b;
+            margin-bottom: 15px;
+        }
+
+        .code-block {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 16px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            margin: 10px 0;
+            position: relative;
+        }
+
+        .copy-code-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: #475569;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            cursor: pointer;
+        }
+
+        .copy-code-btn:hover {
+            background: #334155;
+        }
+
+        .api-endpoints {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .api-endpoints h4 {
+            color: #166534;
+            margin-bottom: 15px;
+        }
+
+        .endpoint {
+            background: white;
+            border: 1px solid #bbf7d0;
+            border-radius: 6px;
+            padding: 12px;
+            margin: 10px 0;
+        }
+
+        .endpoint .method {
+            background: #059669;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        .rate-limit-info {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .rate-limit-info h4 {
+            color: #991b1b;
+            margin-bottom: 15px;
+        }
+
+        .tier-info {
+            display: flex;
+            gap: 20px;
+            margin: 15px 0;
+        }
+
+        .tier-card {
+            background: white;
+            border: 1px solid #fecaca;
+            border-radius: 6px;
+            padding: 12px;
+            text-align: center;
+            flex: 1;
+        }
+
+        .tier-name {
+            font-weight: bold;
+            color: #991b1b;
+            margin-bottom: 5px;
+        }
+
+        .tier-limit {
+            color: #dc2626;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔗 Iryshare API Platform Test</h1>
+            <p>Test and integrate with the Iryshare Analytics API</p>
+        </div>
+
+        <div class="content">
+            <div class="step">
+                <h4>📋 How to Get API Access</h4>
+                <p>1. <strong>Connect Wallet</strong>: Connect your Web3 wallet (MetaMask, WalletConnect, etc.)</p>
+                <p>2. <strong>Check Status</strong>: Verify your wallet is whitelisted for API access</p>
+                <p>3. <strong>Authenticate</strong>: Sign a message to prove wallet ownership and get JWT token</p>
+                <p>4. <strong>Copy & Integrate</strong>: Copy the token and code examples to integrate into your platform</p>
+                <p><strong>✅ Production Ready:</strong> This page uses your production domain <code>iryshare.vercel.app</code></p>
+            </div>
+
+            <div class="card">
+                <h3>🔐 Step 1: Connect Your Wallet</h3>
+                <p>Connect your Web3 wallet to access the Iryshare API</p>
+                <button onclick="connectWallet()" class="btn" title="Connect your Web3 wallet">Connect Wallet</button>
+                <div id="walletInfo" class="wallet-info hidden">
+                    <h4>Wallet Connected</h4>
+                    <p><strong>Address:</strong> <span id="walletAddress"></span></p>
+                    <p><strong>Network:</strong> <span id="networkName"></span></p>
+                    <p><strong>Status:</strong> <span id="whitelistStatus"></span></p>
+                </div>
+            </div>
+
+            <div class="card hidden" id="authSection">
+                <h3>✍️ Step 2: Authenticate for API Access</h3>
+                <p>Sign a message to prove wallet ownership and get API access</p>
+                <button onclick="authenticateWallet()" class="btn" title="Sign message to get API access">Sign Message & Get Access</button>
+                <div id="authResult" class="status hidden"></div>
+            </div>
+
+            <div class="card hidden" id="tokenGuideSection">
+                <h3>🎯 Step 3: Copy & Integrate</h3>
+                <p>Use your access token to integrate the Iryshare API into your platform</p>
+                
+                <div class="token-guide">
+                    <h4>🔑 Your Access Token</h4>
+                    <div class="token-display" id="tokenDisplay">
+                        <button class="copy-btn" onclick="copyToken()">Copy</button>
+                        <span id="tokenText">Token will appear here after authentication</span>
+                    </div>
+                </div>
+
+                <div class="code-examples">
+                    <h4>💻 Code Examples</h4>
+                    <div class="code-block" id="jsExample">
+                        <button class="copy-code-btn" onclick="copyCode('jsExample')">Copy</button>
+                        // JavaScript Example
+                        const token = 'YOUR_TOKEN_HERE';
+                        const response = await fetch('https://iryshare.vercel.app/api/analytics/platform-stats', {
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        });
+                        const data = await response.json();
+                    </div>
+                    <div class="code-block" id="curlExample">
+                        <button class="copy-code-btn" onclick="copyCode('curlExample')">Copy</button>
+                        # cURL Example
+                        curl -H "Authorization: Bearer YOUR_TOKEN_HERE" \
+                             https://iryshare.vercel.app/api/analytics/platform-stats
+                    </div>
+                    <div class="code-block" id="pythonExample">
+                        <button class="copy-code-btn" onclick="copyCode('pythonExample')">Copy</button>
+                        # Python Example
+                        import requests
+                        headers = {'Authorization': 'Bearer YOUR_TOKEN_HERE'}
+                        response = requests.get('https://iryshare.vercel.app/api/analytics/platform-stats', headers=headers)
+                        data = response.json()
+                    </div>
+                </div>
+
+                <div class="api-endpoints">
+                    <h4>🔗 Available API Endpoints</h4>
+                    <div class="endpoint">
+                        <span class="method">GET</span>
+                        <strong>/api/analytics/platform-stats</strong> - Platform statistics (users, files, storage)
+                    </div>
+                    <div class="endpoint">
+                        <span class="method">GET</span>
+                        <strong>/api/analytics/recent-activity</strong> - Recent file uploads and activity
+                    </div>
+                </div>
+
+                <div class="rate-limit-info">
+                    <h4>⚡ Rate Limits</h4>
+                    <div class="tier-info">
+                        <div class="tier-card">
+                            <div class="tier-name">Standard</div>
+                            <div class="tier-limit">50 req/min</div>
+                        </div>
+                        <div class="tier-card">
+                            <div class="tier-name">Premium</div>
+                            <div class="tier-limit">100 req/min</div>
+                        </div>
+                        <div class="tier-card">
+                            <div class="tier-name">Enterprise</div>
+                            <div class="tier-limit">200 req/min</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card hidden" id="apiSection">
+                <h3>🧪 Optional: Test API Endpoints</h3>
+                <p><em>This is just for demonstration. You don't need to test the API here - just copy your token and use it in your own platform!</em></p>
+                <button onclick="getPlatformStats()" class="btn" title="Demo: Test the platform statistics endpoint">Demo: Get Platform Stats</button>
+                <button onclick="getRecentActivity()" class="btn btn-secondary" title="Demo: Test the recent activity endpoint">Demo: Get Recent Activity</button>
+                <div id="apiResult" class="status hidden"></div>
+                <div id="apiData" class="result-box hidden"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://iryshare.vercel.app';
+        let currentWallet = null;
+        let accessToken = null;
+
+        async function connectWallet() {
+            if (typeof window.ethereum === 'undefined') {
+                showStatus('walletInfo', '❌ MetaMask not found. Please install MetaMask extension.', 'error');
+                return;
+            }
+
+            try {
+                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                currentWallet = accounts[0];
+                
+                const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+                const networkName = getNetworkName(chainId);
+                
+                updateWalletInfo(currentWallet, networkName);
+                checkWhitelistStatus(currentWallet);
+                
+                document.getElementById('authSection').classList.remove('hidden');
+            } catch (error) {
+                showStatus('walletInfo', `❌ Error connecting wallet: ${error.message}`, 'error');
+            }
+        }
+
+        function getNetworkName(chainId) {
+            const networks = {
+                '0x1': 'Ethereum Mainnet',
+                '0x89': 'Polygon',
+                '0xa': 'Optimism',
+                '0xa4b1': 'Arbitrum',
+                '0x2105': 'Base',
+                '0x66eee': 'Arbitrum Sepolia',
+                '0x14a33': 'Base Sepolia',
+                '0xaa36a7': 'Sepolia',
+                '0x5': 'Goerli',
+                '0x1a4': 'Optimism Goerli'
+            };
+            return networks[chainId] || `Chain ID: ${chainId}`;
+        }
+
+        function updateWalletInfo(address, network) {
+            document.getElementById('walletAddress').textContent = address;
+            document.getElementById('networkName').textContent = network;
+            document.getElementById('walletInfo').classList.remove('hidden');
+        }
+
+        async function checkWhitelistStatus(address) {
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/whitelist-status/${address}`);
+                const data = await response.json();
+                
+                if (data.whitelisted) {
+                    document.getElementById('whitelistStatus').innerHTML = `✅ Whitelisted (${data.tier})`;
+                } else {
+                    document.getElementById('whitelistStatus').innerHTML = '❌ Not whitelisted';
+                    document.getElementById('authSection').classList.add('hidden');
+                }
+            } catch (error) {
+                document.getElementById('whitelistStatus').innerHTML = '❓ Status unknown';
+            }
+        }
+
+        async function authenticateWallet() {
+            if (!currentWallet) {
+                showStatus('authResult', '❌ Please connect your wallet first', 'error');
+                return;
+            }
+
+            try {
+                const message = `I want to access the Iryshare Analytics API. Timestamp: ${Date.now()}`;
+                const signature = await window.ethereum.request({
+                    method: 'personal_sign',
+                    params: [message, currentWallet]
+                });
+
+                const response = await fetch(`${API_BASE}/api/auth/request-access`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        address: currentWallet,
+                        message: message,
+                        signature: signature
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    accessToken = data.accessToken;
+                    showStatus('authResult', `✅ Access granted! You can now copy your token and use the API in your platform!`, 'success');
+                    document.getElementById('apiSection').classList.remove('hidden');
+                    document.getElementById('tokenGuideSection').classList.remove('hidden');
+                    updateTokenGuide();
+                } else {
+                    showStatus('authResult', `❌ Authentication failed: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus('authResult', `❌ Error during authentication: ${error.message}`, 'error');
+            }
+        }
+
+        function updateTokenGuide() {
+            if (accessToken) {
+                document.getElementById('tokenText').textContent = accessToken;
+                updateCodeExamples();
+            }
+        }
+
+        function updateCodeExamples() {
+            const examples = document.querySelectorAll('.code-block');
+            examples.forEach(example => {
+                const code = example.textContent.replace('YOUR_TOKEN_HERE', accessToken);
+                example.innerHTML = example.innerHTML.replace('YOUR_TOKEN_HERE', accessToken);
+            });
+        }
+
+        async function getPlatformStats() {
+            if (!accessToken) {
+                showStatus('apiResult', '❌ Please authenticate first', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/api/analytics/platform-stats`, {
+                    headers: { 'Authorization': `Bearer ${accessToken}` }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showStatus('apiResult', '✅ Platform stats received!', 'success');
+                    document.getElementById('apiData').textContent = JSON.stringify(data, null, 2);
+                    document.getElementById('apiData').classList.remove('hidden');
+                } else {
+                    showStatus('apiResult', `❌ API Error: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus('apiResult', `❌ Request failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function getRecentActivity() {
+            if (!accessToken) {
+                showStatus('apiResult', '❌ Please authenticate first', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/api/analytics/recent-activity`, {
+                    headers: { 'Authorization': `Bearer ${accessToken}` }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showStatus('apiResult', '✅ Recent activity received!', 'success');
+                    document.getElementById('apiData').textContent = JSON.stringify(data, null, 2);
+                    document.getElementById('apiData').classList.remove('hidden');
+                } else {
+                    showStatus('apiResult', `❌ API Error: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus('apiResult', `❌ Request failed: ${error.message}`, 'error');
+            }
+        }
+
+        function showStatus(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `status ${type}`;
+            element.classList.remove('hidden');
+        }
+
+        async function copyToken() {
+            if (accessToken) {
+                await navigator.clipboard.writeText(accessToken);
+                const btn = document.querySelector('.copy-btn');
+                btn.textContent = 'Copied!';
+                setTimeout(() => btn.textContent = 'Copy', 2000);
+            }
+        }
+
+        async function copyCode(elementId) {
+            const element = document.getElementById(elementId);
+            const code = element.textContent;
+            await navigator.clipboard.writeText(code);
+            const btn = element.querySelector('.copy-code-btn');
+            btn.textContent = 'Copied!';
+            setTimeout(() => btn.textContent = 'Copy', 2000);
+        }
+    </script>
+</body>
+</html>

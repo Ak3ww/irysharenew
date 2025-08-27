@@ -1,0 +1,12 @@
+[33m43277df[m cleanup: Remove analytics API system - moving to separate repo
+[33m6146ccc[m cleanup: remove old gasless-upload files and update dependencies - Remove api/gasless-upload.js and src/utils/gasless-upload.ts - Update Homepage.tsx and ProfileSettings.tsx to use new upload system - Add development setup files and documentation
+[33mb273728[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m feat: Add storage management utility for 12GB free storage credit system
+[33m43277df[m cleanup: Remove analytics API system - moving to separate repo
+[33me1da559[m Fix client-side routing for Vercel deployment - add rewrite rule to handle SPA routing
+[33m907fc24[m Add comprehensive development log for January 20, 2025 - Avatar system optimization and bug fixes
+[33m9f7a879[m Simplify AdminAppearance avatar system: Use same approach as ProfileSettings - direct store usage with simple key props, no complex local state management
+[33mca7efb1[m Fix avatar jumping issue: Remove database refresh that was overriding local state and causing inconsistent avatar display
+[33m98ee626[m Fix AdminAppearance avatar circle lag: Update UI immediately with cropped image, then upload in background for instant user experience
+[33m1ac4c59[m Fix AdminAppearance avatar lag: Use fast ProfileSettings approach - immediate UI updates, non-blocking uploads, real-time events
+[33ma6f8291[m Add timestamps to avatar filenames to prevent browser caching: mainavatars/main_address_timestamp.jpg and linktreeavatars/linktree_address_timestamp.jpg
+[33mfc14449[m Fix storage paths: Use linktreeavatars (no underscore) for storage, linktree_avatar (with underscore) for database column

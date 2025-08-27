@@ -95,6 +95,7 @@ export async function uploadFile(
     
     // Only update storage after successful upload
     try {
+      console.log(`💾 Updating storage for user: ${userAddress}, file size: ${file.size} bytes`);
       await updateUserStorage(userAddress, file.size);
       console.log(`✅ Storage updated for user: ${userAddress}, file size: ${file.size} bytes`);
     } catch (storageUpdateError) {

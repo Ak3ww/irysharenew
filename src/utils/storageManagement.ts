@@ -61,38 +61,41 @@ export async function updateUserStorage(
   fileSizeBytes: number
 ): Promise<boolean> {
   try {
-    // Get current storage
-    const { data, error } = await supabase
+    // First get current storage to calculate new total
+    const { data: currentStorage, error: fetchError } = await supabase
       .from('user_storage')
       .select('used_bytes')
       .eq('address', userAddress)
       .single();
 
-    if (error || !data) {
-      // Create storage record if it doesn't exist
-      const { error: insertError } = await supabase
-        .from('user_storage')
-        .insert({
-          address: userAddress,
-          used_bytes: fileSizeBytes,
-          total_bytes: 12884901888, // 12GB from your schema
-          last_updated: new Date().toISOString()
-        });
-
-      return !insertError;
+    let newUsedBytes = fileSizeBytes; // Default for new users
+    
+    if (currentStorage && !fetchError) {
+      // Add to existing storage
+      newUsedBytes = currentStorage.used_bytes + fileSizeBytes;
     }
 
-    // Update existing storage
-    const newUsedBytes = data.used_bytes + fileSizeBytes;
-    const { error: updateError } = await supabase
+    // Use upsert to either update existing record or create new one
+    // This prevents duplicate entries per user
+    const { error } = await supabase
       .from('user_storage')
-      .update({
+      .upsert({
+        address: userAddress,
         used_bytes: newUsedBytes,
+        total_bytes: 12884901888, // 12GB from your schema
         last_updated: new Date().toISOString()
-      })
-      .eq('address', userAddress);
+      }, {
+        onConflict: 'address', // Use address as conflict resolution key
+        ignoreDuplicates: false // Update existing record instead of ignoring
+      });
 
-    return !updateError;
+    if (error) {
+      console.error('Error upserting storage:', error);
+      return false;
+    }
+
+    console.log(`✅ Storage updated for ${userAddress}: ${currentStorage ? 'added' : 'set'} ${fileSizeBytes} bytes, total: ${newUsedBytes} bytes`);
+    return true;
   } catch (error) {
     console.error('Error updating storage:', error);
     return false;
@@ -115,6 +118,57 @@ export async function getUserStorage(userAddress: string): Promise<UserStorage |
   } catch (error) {
     console.error('Error getting user storage:', error);
     return null;
+  }
+}
+
+/**
+ * Reset user storage to 0 and recalculate from actual files
+ */
+export async function resetUserStorage(userAddress: string): Promise<boolean> {
+  try {
+    // First, set used_bytes to 0
+    const { error: resetError } = await supabase
+      .from('user_storage')
+      .update({
+        used_bytes: 0,
+        last_updated: new Date().toISOString()
+      })
+      .eq('address', userAddress);
+
+    if (resetError) {
+      console.error('Error resetting storage:', resetError);
+      return false;
+    }
+
+    console.log(`✅ Storage reset for ${userAddress}`);
+    return true;
+  } catch (error) {
+    console.error('Error resetting user storage:', error);
+    return false;
+  }
+}
+
+/**
+ * Get actual file sizes from database for a user
+ */
+export async function getActualFileSizes(userAddress: string): Promise<number> {
+  try {
+    // Query files table to get actual file sizes
+    const { data, error } = await supabase
+      .from('files')
+      .select('file_size_bytes')
+      .eq('owner_address', userAddress);
+
+    if (error) {
+      console.error('Error getting file sizes:', error);
+      return 0;
+    }
+
+    const totalSize = data?.reduce((sum, file) => sum + (file.file_size_bytes || 0), 0) || 0;
+    return totalSize;
+  } catch (error) {
+    console.error('Error calculating actual file sizes:', error);
+    return 0;
   }
 }
 

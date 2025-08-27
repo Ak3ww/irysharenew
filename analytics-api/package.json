@@ -1,0 +1,22 @@
+{
+  "name": "iryshare-analytics-api",
+  "version": "1.0.0",
+  "description": "Iryshare Analytics API with wallet authentication",
+  "type": "module",
+  "main": "analytics-server.js",
+  "scripts": {
+    "start": "node analytics-server.js",
+    "dev": "node --watch analytics-server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "@supabase/supabase-js": "^2.38.4",
+    "ethers": "^6.8.1",
+    "jsonwebtoken": "^9.0.2",
+    "dotenv": "^16.3.1"
+  },
+  "keywords": ["iryshare", "analytics", "api", "web3", "wallet"],
+  "author": "Iryshare Team",
+  "license": "MIT"
+}

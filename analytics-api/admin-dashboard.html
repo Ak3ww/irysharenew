@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iryshare API Admin Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #e2e8f0;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #60a5fa, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            color: #94a3b8;
+            font-size: 1.1rem;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 25px;
+        }
+
+        .card h3 {
+            color: #60a5fa;
+            margin-bottom: 20px;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #cbd5e1;
+            font-weight: 500;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #e2e8f0;
+            font-size: 14px;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #60a5fa;
+            box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #60a5fa, #3b82f6);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(96, 165, 250, 0.3);
+        }
+
+        .btn-danger {
+            background: linear-gradient(45deg, #ef4444, #dc2626);
+        }
+
+        .btn-danger:hover {
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-success {
+            background: linear-gradient(45deg, #10b981, #059669);
+        }
+
+        .btn-success:hover {
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .status {
+            margin: 15px 0;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: 500;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        .status.success {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: #10b981;
+        }
+
+        .status.error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+        }
+
+        .status.info {
+            background: rgba(96, 165, 250, 0.1);
+            border: 1px solid rgba(96, 165, 250, 0.3);
+            color: #60a5fa;
+        }
+
+        .whitelist-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .whitelist-table th,
+        .whitelist-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .whitelist-table th {
+            background: rgba(255, 255, 255, 0.05);
+            color: #60a5fa;
+            font-weight: 600;
+        }
+
+        .whitelist-table tr:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .tier-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .tier-standard {
+            background: rgba(156, 163, 175, 0.2);
+            color: #9ca3af;
+        }
+
+        .tier-premium {
+            background: rgba(245, 158, 11, 0.2);
+            color: #f59e0b;
+        }
+
+        .tier-enterprise {
+            background: rgba(139, 92, 246, 0.2);
+            color: #8b5cf6;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #60a5fa;
+            margin-bottom: 8px;
+        }
+
+        .stat-label {
+            color: #94a3b8;
+            font-size: 14px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .test-section {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 25px;
+            margin-top: 30px;
+        }
+
+        .result-box {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 15px;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔐 Iryshare API Admin Dashboard</h1>
+            <p>Manage whitelisted wallets and test API access</p>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number" id="totalWallets">-</div>
+                <div class="stat-label">Whitelisted Wallets</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="totalRequests">-</div>
+                <div class="stat-label">Total API Requests</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="activeTokens">-</div>
+                <div class="stat-label">Active Tokens</div>
+            </div>
+        </div>
+
+        <div class="dashboard-grid">
+            <div class="card">
+                <h3>➕ Add Wallet to Whitelist</h3>
+                <form id="addWalletForm">
+                    <div class="form-group">
+                        <label for="walletAddress">Wallet Address</label>
+                        <input type="text" id="walletAddress" placeholder="0x..." required>
+                    </div>
+                    <div class="form-group">
+                        <label for="walletTier">Tier</label>
+                        <select id="walletTier" required>
+                            <option value="standard">Standard (50 req/min)</option>
+                            <option value="premium">Premium (100 req/min)</option>
+                            <option value="enterprise">Enterprise (200 req/min)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="walletName">Name/Description</label>
+                        <input type="text" id="walletName" placeholder="Platform name or description">
+                    </div>
+                    <button type="submit" class="btn btn-success">Add Wallet</button>
+                </form>
+                <div id="addWalletResult" class="status hidden"></div>
+            </div>
+
+            <div class="card">
+                <h3>❌ Remove Wallet from Whitelist</h3>
+                <form id="removeWalletForm">
+                    <div class="form-group">
+                        <label for="removeWalletAddress">Wallet Address</label>
+                        <input type="text" id="removeWalletAddress" placeholder="0x..." required>
+                    </div>
+                    <button type="submit" class="btn btn-danger">Remove Wallet</button>
+                </form>
+                <div id="removeWalletResult" class="status hidden"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>📋 Current Whitelist</h3>
+            <button onclick="refreshWhitelist()" class="btn">🔄 Refresh</button>
+            <div id="whitelistContainer">
+                <table class="whitelist-table">
+                    <thead>
+                        <tr>
+                            <th>Address</th>
+                            <th>Tier</th>
+                            <th>Rate Limit</th>
+                            <th>Name</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="whitelistTableBody">
+                        <tr>
+                            <td colspan="5" style="text-align: center; color: #94a3b8;">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>🧪 Test API Access</h3>
+            <p>Test the API endpoints with different authentication scenarios</p>
+            
+            <div style="margin-bottom: 20px;">
+                <button onclick="testHealthEndpoint()" class="btn">Test Health Endpoint</button>
+                <button onclick="testUnauthorizedAccess()" class="btn btn-secondary">Test Unauthorized Access</button>
+                <button onclick="testWhitelistStatus()" class="btn btn-secondary">Test Whitelist Status</button>
+            </div>
+            
+            <div id="testResult" class="status hidden"></div>
+            <div id="testData" class="result-box hidden"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://iryshare.vercel.app';
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            refreshWhitelist();
+            loadStats();
+        });
+
+        // Add wallet form handler
+        document.getElementById('addWalletForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const address = document.getElementById('walletAddress').value;
+            const tier = document.getElementById('walletTier').value;
+            const name = document.getElementById('walletName').value;
+
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/admin/whitelist`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ address, tier, requestsPerMinute: getRateLimit(tier), name })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showStatus('addWalletResult', `✅ Wallet ${address} added successfully!`, 'success');
+                    document.getElementById('addWalletForm').reset();
+                    refreshWhitelist();
+                    loadStats();
+                } else {
+                    showStatus('addWalletResult', `❌ Error: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus('addWalletResult', `❌ Request failed: ${error.message}`, 'error');
+            }
+        });
+
+        // Remove wallet form handler
+        document.getElementById('removeWalletForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const address = document.getElementById('removeWalletAddress').value;
+
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/admin/whitelist/${address}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showStatus('removeWalletResult', `✅ Wallet ${address} removed successfully!`, 'success');
+                    document.getElementById('removeWalletForm').reset();
+                    refreshWhitelist();
+                    loadStats();
+                } else {
+                    showStatus('removeWalletResult', `❌ Error: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus('removeWalletResult', `❌ Request failed: ${error.message}`, 'error');
+            }
+        });
+
+        // Get rate limit based on tier
+        function getRateLimit(tier) {
+            const limits = {
+                'standard': 50,
+                'premium': 100,
+                'enterprise': 200
+            };
+            return limits[tier] || 50;
+        }
+
+        // Refresh whitelist
+        async function refreshWhitelist() {
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/admin/whitelist`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    displayWhitelist(data.whitelist);
+                } else {
+                    console.error('Failed to fetch whitelist:', data.error);
+                }
+            } catch (error) {
+                console.error('Error refreshing whitelist:', error);
+            }
+        }
+
+        // Display whitelist in table
+        function displayWhitelist(whitelist) {
+            const tbody = document.getElementById('whitelistTableBody');
+            
+            if (!whitelist || whitelist.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #94a3b8;">No whitelisted wallets</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = whitelist.map(wallet => `
+                <tr>
+                    <td><code>${wallet.address}</code></td>
+                    <td><span class="tier-badge tier-${wallet.tier}">${wallet.tier}</span></td>
+                    <td>${wallet.requestsPerMinute} req/min</td>
+                    <td>${wallet.name || '-'}</td>
+                    <td>
+                        <button onclick="removeWallet('${wallet.address}')" class="btn btn-danger" style="padding: 6px 12px; font-size: 12px;">
+                            Remove
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Remove wallet function
+        async function removeWallet(address) {
+            if (!confirm(`Are you sure you want to remove wallet ${address} from the whitelist?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/admin/whitelist/${address}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    showStatus('removeWalletResult', `✅ Wallet ${address} removed successfully!`, 'success');
+                    refreshWhitelist();
+                    loadStats();
+                } else {
+                    const data = await response.json();
+                    showStatus('removeWalletResult', `❌ Error: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus('removeWalletResult', `❌ Request failed: ${error.message}`, 'error');
+            }
+        }
+
+        // Load dashboard stats
+        async function loadStats() {
+            try {
+                // For now, we'll use mock data since we don't have these endpoints yet
+                document.getElementById('totalWallets').textContent = '2'; // Mock
+                document.getElementById('totalRequests').textContent = '0'; // Mock
+                document.getElementById('activeTokens').textContent = '0'; // Mock
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        // Test health endpoint
+        async function testHealthEndpoint() {
+            try {
+                showStatus('testResult', '🔍 Testing health endpoint...', 'info');
+                hideStatus('testData');
+
+                const response = await fetch(`${API_BASE}/health`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    showStatus('testResult', '✅ Health endpoint working correctly!', 'success');
+                    document.getElementById('testData').textContent = JSON.stringify(data, null, 2);
+                    document.getElementById('testData').classList.remove('hidden');
+                } else {
+                    showStatus('testResult', `❌ Health endpoint failed with status ${response.status}`, 'error');
+                }
+            } catch (error) {
+                showStatus('testResult', `❌ Test failed: ${error.message}`, 'error');
+            }
+        }
+
+        // Test unauthorized access
+        async function testUnauthorizedAccess() {
+            try {
+                showStatus('testResult', '🔍 Testing unauthorized access...', 'info');
+                hideStatus('testData');
+
+                const response = await fetch(`${API_BASE}/api/analytics/platform-stats`);
+
+                if (response.status === 401) {
+                    showStatus('testResult', '✅ Unauthorized access correctly blocked (401)', 'success');
+                } else {
+                    showStatus('testResult', `⚠️ Expected 401, got ${response.status}`, 'error');
+                }
+            } catch (error) {
+                showStatus('testResult', `❌ Test failed: ${error.message}`, 'error');
+            }
+        }
+
+        // Test whitelist status
+        async function testWhitelistStatus() {
+            try {
+                showStatus('testResult', '🔍 Testing whitelist status...', 'info');
+                hideStatus('testData');
+
+                // Test with a known whitelisted address
+                const testAddress = '0x4351fd8d9a25c14556ce621ddcce35c2adefe156';
+                const response = await fetch(`${API_BASE}/api/auth/whitelist-status/${testAddress}`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    showStatus('testResult', '✅ Whitelist status endpoint working!', 'success');
+                    document.getElementById('testData').textContent = JSON.stringify(data, null, 2);
+                    document.getElementById('testData').classList.remove('hidden');
+                } else {
+                    showStatus('testResult', `❌ Whitelist status failed with status ${response.status}`, 'error');
+                }
+            } catch (error) {
+                showStatus('testResult', `❌ Test failed: ${error.message}`, 'error');
+            }
+        }
+
+        // Show status message
+        function showStatus(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `status ${type}`;
+            element.classList.remove('hidden');
+        }
+
+        // Hide status message
+        function hideStatus(elementId) {
+            document.getElementById(elementId).classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
