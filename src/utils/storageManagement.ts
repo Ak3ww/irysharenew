@@ -191,6 +191,8 @@ export function formatBytes(bytes: number): string {
  */
 export async function ensureUserStorage(userAddress: string): Promise<boolean> {
   try {
+    console.log(`🔍 ensureUserStorage called for: ${userAddress}`);
+    
     // Check if storage record exists
     const { error } = await supabase
       .from('user_storage')
@@ -199,6 +201,8 @@ export async function ensureUserStorage(userAddress: string): Promise<boolean> {
       .single();
 
     if (error && error.code === 'PGRST116') {
+      console.log(`📝 No storage record found for ${userAddress}, creating one...`);
+      
       // No storage record exists, create one
       const { error: insertError } = await supabase
         .from('user_storage')
@@ -211,7 +215,7 @@ export async function ensureUserStorage(userAddress: string): Promise<boolean> {
         });
 
       if (insertError) {
-        console.error('Error creating storage record:', insertError);
+        console.error(`❌ Error creating storage record for ${userAddress}:`, insertError);
         return false;
       }
 
@@ -220,7 +224,7 @@ export async function ensureUserStorage(userAddress: string): Promise<boolean> {
     }
 
     if (error) {
-      console.error('Error checking storage record:', error);
+      console.error(`❌ Error checking storage record for ${userAddress}:`, error);
       return false;
     }
 
@@ -228,7 +232,7 @@ export async function ensureUserStorage(userAddress: string): Promise<boolean> {
     console.log(`✅ Storage record already exists for user: ${userAddress}`);
     return true;
   } catch (error) {
-    console.error('Error ensuring user storage:', error);
+    console.error(`❌ Exception in ensureUserStorage for ${userAddress}:`, error);
     return false;
   }
 }
