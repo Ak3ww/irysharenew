@@ -437,12 +437,6 @@ export function Homepage({ address, isConnected, usernameSaved, onFileUpload, re
                 variant="upload"
                 maxSize={25 * 1024 * 1024} // 25MB limit
               />
-              {/* File size info */}
-              {file && (
-                <div className="mt-2 text-[#67FFD4] text-sm">
-                  📁 File size: {Math.round(file.size / 1024 / 1024 * 100) / 100}MB / 25MB max
-                </div>
-              )}
             </div>
             {/* Share Recipients (only for share action) */}
             {selectedAction === 'share' && (

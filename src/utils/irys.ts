@@ -37,13 +37,23 @@ export async function uploadFile(
   
   // Check if user has enough storage
   try {
+    console.log(`🔍 Checking storage for user: ${userAddress}, file size: ${file.size} bytes`);
     const hasStorage = await hasEnoughStorage(userAddress, file.size);
+    console.log(`✅ Storage check result:`, hasStorage);
+    
     if (!hasStorage) {
       throw new Error('Insufficient storage space. You have used your 12GB free storage allowance.');
     }
   } catch (storageError) {
-    console.error('Storage check error:', storageError);
-    throw new Error('Failed to check storage space. Please try again.');
+    console.error('❌ Storage check error:', storageError);
+    
+    // If it's a storage limit error, re-throw it
+    if (storageError instanceof Error && storageError.message.includes('Insufficient storage space')) {
+      throw storageError;
+    }
+    
+    // For other storage errors, try to continue with upload (graceful degradation)
+    console.warn('⚠️ Storage check failed, continuing with upload...');
   }
   
   // Use original file type for public files, fallback to octet-stream if needed
