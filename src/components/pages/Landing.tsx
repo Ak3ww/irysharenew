@@ -103,7 +103,22 @@ export function Landing({ onLoginSuccess }: LandingProps) {
         setUsernameError('Error saving username');
         return;
       }
-                                       // Step 4: Automatically approve user for future uploads
+
+      // Step 4: Create storage record for new user
+      try {
+        console.log(`💾 Creating storage record for new user: ${address}`);
+        const storageCreated = await ensureUserStorage(address);
+        if (storageCreated) {
+          console.log('✅ Storage record created successfully');
+        } else {
+          console.warn('⚠️ User registered but storage record creation failed');
+        }
+      } catch (storageError) {
+        console.error('❌ Storage record creation failed:', storageError);
+        console.warn('⚠️ User registered but storage record creation failed');
+      }
+
+      // Step 5: Automatically approve user for future uploads
         try {
           console.log(`🔐 Approving user for sponsored uploads:`, address);
           const apiUrl = import.meta.env.DEV ? 'http://localhost:3001/api/approve-user' : '/api/approve-user';
